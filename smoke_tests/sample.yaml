@@ -1,0 +1,29 @@
+type: 'api-test'
+
+config:
+  client:
+    base_url: 'https://api.dev.moberries.com/api/v2/'
+
+tests:
+  job_roles:
+    endpoint: 'jobroles/3'
+    method: 'get'
+    expected: "{'id': 3, 'name': 'Product Sales Manager', 'categories': [{'name': 'Sales', 'id': 4}], 'is_visible': True}"
+  login:
+    multi_step: true
+    steps:
+      - name: 'get_token'
+        is_authentication: true
+        endpoint: 'obtain_token/'
+        method: 'post'
+        payload: '{"email": "super_user@moberries.com", "password": "moberries"}'
+        auth_header_template:
+          token_position: "res.json().get(\"token\")"
+          auth_header:
+            Authorization: "JWT {token}"
+      - name: 'get-candidates'
+        endpoint: 'candidates/1/'
+        method: 'get'
+        contains:
+          id: 1
+          email: "t+external-candidate_0@moberries.com"
