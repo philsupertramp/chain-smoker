@@ -1,0 +1,24 @@
+type: 'api-test'
+
+config:
+  client:
+    base_url: 'https://api.dev.moberries.com/api/v2/'
+
+tests:
+  retrieve_own_candidate_profile:
+    multi_step: true
+    steps:
+      - name: 'get_token'
+        is_authentication: true
+        endpoint: 'obtain_token/'
+        method: 'post'
+        payload: '{"email": "t+candidate_0@moberries.com", "password": "moberries"}'
+        auth_header_template:
+          token_position: "res.json().get(\"token\")"
+          auth_header:
+            Authorization: "JWT {token}"
+      - name: 'get-candidates'
+        endpoint: 'candidates/me/'
+        method: 'get'
+        contains:
+          email: "t+candidate_0@moberries.com"
