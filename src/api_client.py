@@ -1,8 +1,10 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union, Dict
 from urllib.parse import urljoin
 
-from requests import Session
+from requests import Session, Response
+
+from src.config import ClientConfig
 
 
 class PayloadType(str, Enum):
@@ -11,21 +13,24 @@ class PayloadType(str, Enum):
 
 
 class APIClient:
-    def __init__(self, base_url):
-        self.base_url = base_url
+    def __init__(self, config: ClientConfig) -> None:
+        self.base_url = config.base_url
         self.session = Session()
+        if config.auth_header is not None:
+            self.session.headers = config.auth_header.auth_header
 
-    def _build_url(self, path):
+    def _build_url(self, path: str) -> str:
         return urljoin(self.base_url, path)
 
-    def _request(self, method, path, requires_auth: bool = True, **kwargs):
+    def _request(self, method: str, path: str, requires_auth: bool = True, **kwargs) -> Response:
         if requires_auth:
             session = self.session
         else:
             session = Session()
         return getattr(session, method)(self._build_url(path), **kwargs)
 
-    def _request_with_payload(self, method, path, data, payload_type: Optional[PayloadType] = None):
+    def _request_with_payload(self, method: str, path: str, data: Union[Dict, str],
+                              payload_type: Optional[PayloadType] = None) -> Response:
         payload_key = {
             PayloadType.JSON: 'json',
             PayloadType.MULTIPART: 'data'
@@ -33,14 +38,14 @@ class APIClient:
         kwargs = {payload_key: data}
         return self._request(method, path, **kwargs)
 
-    def get(self, path, **kwargs):
+    def get(self, path: str, **kwargs) -> Response:
         return self._request('get', path, params=kwargs)
 
-    def post(self, path, data, payload_type: Optional[PayloadType] = None):
+    def post(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None) -> Response:
         return self._request_with_payload('post', path, data, payload_type)
 
-    def put(self, path, data, payload_type: Optional[PayloadType] = None):
+    def put(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None) -> Response:
         return self._request_with_payload('put', path, data, payload_type)
 
-    def patch(self, path, data, payload_type: Optional[PayloadType] = None):
+    def patch(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None) -> Response:
         return self._request_with_payload('patch', path, data, payload_type)
