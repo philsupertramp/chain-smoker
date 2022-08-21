@@ -4,7 +4,7 @@ from typing import List, Optional
 import yaml
 
 from .api_client import APIClient
-from .config import TestCaseConfig
+from .config import TestCaseConfig, ConfigType
 from .logger import logger
 from .mixins import ExpectedMixin
 from .test_clients import SmokeTest, ChainedSmokeTest
@@ -27,24 +27,15 @@ class TestFileLoader(ExpectedMixin):
 
     @staticmethod
     def _get_client(config: TestCaseConfig) -> Optional[APIClient]:
-        if config.type == 'api-test':
+        if config.type == ConfigType.API_TEST:
             return APIClient(config.config.client)
 
     def _build_tests(self) -> None:
         for test_config in self.config.tests:
             if test_config.multi_step:
-                test_case = ChainedSmokeTest(
-                    test_config.name,
-                    test_config.steps,
-                    self.client
-                )
+                test_case = ChainedSmokeTest.build(test_config, self.client)
             else:
-                test_case = SmokeTest(
-                    test_config.name,
-                    partial(getattr(self.client, test_config.method), test_config.endpoint),
-                    self.build_expected(test_config.expected),
-                    test_config.contains,
-                )
+                test_case = SmokeTest.build(test_config, self.client)
             self.test_methods.append(test_case)
 
     def _bootstrap(self) -> None:
