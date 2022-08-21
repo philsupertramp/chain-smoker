@@ -2,23 +2,24 @@ type: 'api-test'
 
 config:
   client:
-    base_url: 'https://api.dev.moberries.com/api/v2/'
+    base_url: 'https://www.postman-echo.com/'
 
 tests:
-  retrieve_own_candidate_profile:
+  reuse_post_payload_in_following_request:
     multi_step: true
     steps:
       - name: 'get_token'
         is_authentication: true
-        endpoint: 'obtain_token/'
+        endpoint: 'post/'
         method: 'post'
-        payload: '{"email": "t+candidate_0@moberries.com", "password": "moberries"}'
+        payload: '{"token": "Some Strange Token"}'
         auth_header_template:
-          token_position: "res.json().get(\"token\")"
+          token_position: "res.json().get('data').get('token')"
           auth_header:
             Authorization: "JWT {token}"
-      - name: 'get-candidates'
-        endpoint: 'candidates/me/'
+      - name: 'get-with-header'
+        endpoint: 'get/'
         method: 'get'
         contains:
-          email: "t+candidate_0@moberries.com"
+          headers:
+            authorization: "JWT Some Strange Token"
