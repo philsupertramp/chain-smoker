@@ -31,6 +31,8 @@ class TestConfig(BaseModel):
     method: str = Field('get', description='Method to use when calling endpoint')
     endpoint: Optional[str] = Field(None, description='Target endpoint to request from')
 
+    requires_auth: bool = Field(True, description='Determines if the test uses authentication')
+
     is_authentication: bool = Field(
         False, description='Determines if this configuration is used to perform an authentication request'
     )
@@ -39,11 +41,15 @@ class TestConfig(BaseModel):
     )
 
     multi_step: bool = Field(False, description='Determines if test consists of single or multiple steps.')
-    steps: List['TestConfig'] = Field([], description='List of steps, used when multi_step=True.')
+    steps: List['TestConfig'] = Field([], description='List of steps, used when multi_step=True')
 
-    payload: Optional[PayloadType] = Field(None, description='')
-    expected: Optional[PayloadType] = Field(None, description='')
-    contains: Optional[PayloadType] = Field(None, description='')
+    uses: Optional[Dict] = Field(None, description='Uses variable in payload/endpoint from previous test')
+
+    payload: Optional[PayloadType] = Field(None, description='Payload used, can be Dict or Dict/JSON-string')
+    expected: Optional[PayloadType] = Field(
+        None, description='Exact comparison values, can be Dict or Dict/JSON-string'
+    )
+    contains: Optional[PayloadType] = Field(None, description='IN comparison values, can be Dict or Dict/JSON-string')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestConfig':

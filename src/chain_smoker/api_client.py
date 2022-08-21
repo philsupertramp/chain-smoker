@@ -30,22 +30,25 @@ class APIClient:
         return getattr(session, method)(self._build_url(path), **kwargs)
 
     def _request_with_payload(self, method: str, path: str, data: Union[Dict, str],
-                              payload_type: Optional[PayloadType] = None) -> Response:
+                              payload_type: Optional[PayloadType] = None, *args, **kwargs) -> Response:
         payload_key = {
             PayloadType.JSON: 'json',
             PayloadType.MULTIPART: 'data'
         }.get(payload_type, 'json')
-        kwargs = {payload_key: data}
-        return self._request(method, path, **kwargs)
+        kwargs.update(**{payload_key: data})
+        return self._request(method, path, *args, **kwargs)
 
-    def get(self, path: str, **kwargs) -> Response:
-        return self._request('get', path, params=kwargs)
+    def get(self, path: str, query_params: Optional[Dict] = None, *args, **kwargs) -> Response:
+        return self._request('get', path, params=query_params, *args, **kwargs)
 
-    def post(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None) -> Response:
-        return self._request_with_payload('post', path, data, payload_type)
+    def post(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None,
+             *args, **kwargs) -> Response:
+        return self._request_with_payload('post', path, data, payload_type, *args, **kwargs)
 
-    def put(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None) -> Response:
-        return self._request_with_payload('put', path, data, payload_type)
+    def put(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None,
+            *args, **kwargs) -> Response:
+        return self._request_with_payload('put', path, data, payload_type, *args, **kwargs)
 
-    def patch(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None) -> Response:
-        return self._request_with_payload('patch', path, data, payload_type)
+    def patch(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None,
+              *args, **kwargs) -> Response:
+        return self._request_with_payload('patch', path, data, payload_type, *args, **kwargs)
