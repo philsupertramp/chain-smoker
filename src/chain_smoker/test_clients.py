@@ -1,5 +1,8 @@
-from typing import Union, Dict, Callable, List
+from collections import OrderedDict
+from typing import Union, Dict, Callable, List, Optional
 from functools import partial
+
+from requests import Response
 
 from .api_client import APIClient
 from .config import TestConfig
@@ -8,13 +11,16 @@ from .mixins import ExpectedMixin
 
 
 class ValueTest:
+    """
+    Base test class handles comparison of received values with expected values
+    """
     def __init__(self, value: Union[Dict, str, int]):
         self.value = value
 
-    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: Callable) -> None:
+    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
         raise NotImplementedError()
 
-    def test(self, other_value: Union[Dict, str, int], name: str, method: Callable) -> bool:
+    def test(self, other_value: Union[Dict, str, int], name: str, method: str) -> bool:
         self.error = ''
         self.found_error = False
         self._run_test(other_value, name, method)
@@ -24,15 +30,24 @@ class ValueTest:
 
 
 class ExpectedTest(ValueTest):
-    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: Callable) -> None:
+    """
+    Equal comparison of objects
+    """
+    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
         if other_value != self.value:
             self.error = f'Unexpected result for {name}!\n{other_value}\n!=\n{self.value}\n{method}'
             self.found_error = True
 
 
 class ContainsTest(ValueTest):
-    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: Callable) -> None:
-        if isinstance(self.value, str):
+    """
+    Tests if value member of received value.
+
+    - string/integer: Expected value part of received value (Expected IN Received)
+    - dictionary: Expected (key, value)-pairs are within received values
+    """
+    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
+        if isinstance(self.value, (str, int)):
             if self.value not in other_value:
                 self.error = f'Unexpected result for {name}!\n' \
                              f'{self.value} not found in:\n' \
@@ -62,66 +77,106 @@ class ContainsTest(ValueTest):
 
 
 class SmokeTest(ExpectedMixin):
-    def __init__(self, name: str, method: Callable, expected_result: Union[Dict, str, int],
-                 contains_result: Union[Dict, str, int]) -> None:
+    """
+    Single test entity
+    """
+    def __init__(self, name: str, client: APIClient, method: str, endpoint: str, expected_result: Union[Dict, str, int],
+                 contains_result: Union[Dict, str, int], payload: Union[Dict, str, int], uses: Optional[Dict],
+                 requires_auth: Optional[bool] = True) -> None:
         self.name: str = name
-        self.method: Callable = method
+        self.client: APIClient = client
+        self.method: str = method
+        self.endpoint: str = endpoint
+        self.payload: Optional[Union[Dict, str, int]] = payload
+        self.uses: Optional[Dict] = uses
+        self.requires_auth = requires_auth
         self.expected_result: ExpectedTest = ExpectedTest(expected_result) if expected_result else None
         self.contains_result: ContainsTest = ContainsTest(contains_result) if contains_result else None
 
     def _get_response(self, *args, **kwargs):
-        res = self.method(*args, **kwargs)
+        endpoint = self.endpoint
+        payload = self.payload
+
+        if self.uses is not None:
+            values = kwargs.pop('values', None)
+            format_values = {k: eval(v, {'values': values}) for k, v in self.uses.items()}
+            endpoint = self.endpoint.format(**format_values)
+            for key, value in format_values.items():
+                payload = payload.replace('{' + key + '}', value)
+
+        kwargs.pop('values', None)
+        if self.payload is not None:
+            method = partial(getattr(self.client, self.method), endpoint, self.build_expected(payload))
+        else:
+            method = partial(getattr(self.client, self.method), endpoint)
+
+        res = method(requires_auth=self.requires_auth, *args, **kwargs)
         try:
             return res.json()
         except ValueError:
             return res.text.replace('\n', '').replace('   ', ' ').replace('  ', ' ')
 
-    def run(self, *args, **kwargs) -> None:
+    def run(self, *args, **kwargs) -> Optional[Response]:
         result = self._get_response(*args, **kwargs)
         if self.expected_result is not None and not self.expected_result.test(result, self.name, self.method):
             return
         if self.contains_result is not None and not self.contains_result.test(result, self.name, self.method):
             return
         logger.info(f'Success for {self.name}!')
+        return result
 
     @classmethod
     def build(cls, step: TestConfig, client: APIClient) -> 'SmokeTest':
-        if step.payload is not None:
-            method = partial(getattr(client, step.method), step.endpoint, step.payload)
-        else:
-            method = partial(getattr(client, step.method), step.endpoint)
         return cls(
             step.name,
-            method,
-            cls.build_expected(step.expected),
-            step.contains
+            client,
+            step.method,
+            step.endpoint,
+            step.expected,
+            step.contains,
+            step.payload,
+            step.uses
         )
 
 
 class ChainedSmokeTest(ExpectedMixin):
+    """
+    Chained test entity.
+
+    Chained tests can reuse values of previous tests using the "uses" keyword.
+    Additionally, an authentication step can be inserted, marked using the "is_authentication" keyword.
+    """
     def __init__(self, name: str, steps: List[TestConfig], client: APIClient):
         self.name: str = name
         self.steps: List[TestConfig] = steps
         self.client: APIClient = client
-        self.tests: List[SmokeTest] = list()
-        self._build_test()
+        self.tests: Dict[str, SmokeTest] = dict()
+        self.values = dict()
 
     def _build_test(self):
+        tests = list()
         for step in self.steps:
             if step.is_authentication:
+                # TODO: include "uses" here
+                # NOTE: do NOT remove this assignment, `res` is a magic value for users
                 res = getattr(self.client, step.method)(step.endpoint, data=self.build_expected(step.payload))
                 auth_key, auth_value = list(step.auth_header_template.auth_header.dict().items())[0]
                 auth_value = auth_value.format(token=eval(step.auth_header_template.token_position))
                 self.client.session.headers = {auth_key: auth_value}
             else:
-                self.tests.append(SmokeTest.build(
-                    step,
-                    self.client
-                ))
+                tests.append(
+                    (step.name, SmokeTest.build(step, self.client))
+                )
+
+        self.tests = OrderedDict(tests)
 
     def run(self):
-        for test in self.tests:
-            test.run()
+        logger.info(f'Running chained test case {self.name}:')
+        self._build_test()
+        self.values = dict()
+        for test_name, test in self.tests.items():
+
+            self.values[test_name] = test.run(values=self.values)
 
     @classmethod
     def build(cls, step: TestConfig, client: APIClient) -> 'ChainedSmokeTest':
