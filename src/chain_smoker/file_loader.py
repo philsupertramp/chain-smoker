@@ -3,11 +3,11 @@ from typing import List, Optional
 
 import yaml
 
-from src.api_client import APIClient
-from src.config import TestCaseConfig
-from src.logger import logger
-from src.mixins import ExpectedMixin
-from src.test_clients import SmokeTest, ChainedSmokeTest
+from .api_client import APIClient
+from .config import TestCaseConfig
+from .logger import logger
+from .mixins import ExpectedMixin
+from .test_clients import SmokeTest, ChainedSmokeTest
 
 
 class TestFileLoader(ExpectedMixin):

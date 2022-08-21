@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 
 from requests import Session, Response
 
-from src.config import ClientConfig
+from .config import ClientConfig
 
 
 class PayloadType(str, Enum):
@@ -17,7 +17,7 @@ class APIClient:
         self.base_url = config.base_url
         self.session = Session()
         if config.auth_header is not None:
-            self.session.headers = config.auth_header.auth_header
+            self.session.headers.update(config.auth_header.auth_header.dict())
 
     def _build_url(self, path: str) -> str:
         return urljoin(self.base_url, path)
