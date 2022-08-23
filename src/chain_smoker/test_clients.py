@@ -14,8 +14,9 @@ class ValueTest:
     """
     Base test class handles comparison of received values with expected values
     """
-    def __init__(self, value: Union[Dict, str, int]):
+    def __init__(self, value: Union[Dict, str, int], inverse=False):
         self.value = value
+        self.inverse = inverse
 
     def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
         raise NotImplementedError()
@@ -34,8 +35,24 @@ class ExpectedTest(ValueTest):
     Equal comparison of objects
     """
     def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
-        if other_value != self.value:
-            self.error = f'Unexpected result for {name}!\n{other_value}\n!=\n{self.value}\n{method}'
+        op = '__ne__' if self.inverse else '__eq__'
+        if getattr(other_value, op)(self.value):
+            self.error = f'Unexpected result for {name}!\n{other_value}\n'
+            self.error += '==' if self.inverse else '!='
+            self.error += f'\n{self.value}\n{method}'
+            self.found_error = True
+
+
+class ExpectedStatusCodeTest(ValueTest):
+    """
+    Equal comparison of objects
+    """
+    def _run_test(self, other_value: Response, name: str, method: str) -> None:
+        op = '__ne__' if self.inverse else '__eq__'
+        if getattr(other_value.status_code, op)(self.value):
+            self.error = f'Unexpected status_code for {name}!\n{other_value.status_code}\n'
+            self.error += '==' if self.inverse else '!='
+            self.error += f'\n{self.value}\n{method}'
             self.found_error = True
 
 
@@ -47,6 +64,36 @@ class ContainsTest(ValueTest):
     - dictionary: Expected (key, value)-pairs are within received values
     """
     def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
+        if self.inverse:
+            self._run_negative_test(other_value, name, method)
+        else:
+            self._run_positive_test(other_value, name, method)
+
+    def _run_negative_test(self, other_value, name, method):
+        if isinstance(self.value, (str, int)):
+            if self.value in other_value:
+                self.error = f'Unexpected result for {name}!\n' \
+                             f'{self.value}  in:\n' \
+                             f'{other_value}'
+                self.found_error = True
+        else:
+            for key, value in self.value.items():
+                if isinstance(value, dict):
+                    for nested_key, nested_value in value.items():
+                        if nested_key in other_value[key]:
+                            self.error = f'Unexpected result for {name}!\n' \
+                                         f'{nested_key} found in:\n' \
+                                         f'{other_value[key]}'
+                            self.found_error = True
+                else:
+                    if key in other_value:
+                        self.error = f'Unexpected result for {name}!\n{key} found in:\n{other_value}'
+                        self.found_error = True
+                    if other_value[key] == value:
+                        self.error = f'Unexpected result for {name}!\n{other_value[key]}=={value}\n{method}'
+                        self.found_error = True
+
+    def _run_positive_test(self, other_value, name, method):
         if isinstance(self.value, (str, int)):
             if self.value not in other_value:
                 self.error = f'Unexpected result for {name}!\n' \
@@ -82,7 +129,8 @@ class SmokeTest(ExpectedMixin):
     """
     def __init__(self, name: str, client: APIClient, method: str, endpoint: str, expected_result: Union[Dict, str, int],
                  contains_result: Union[Dict, str, int], payload: Union[Dict, str, int], uses: Optional[Dict],
-                 requires_auth: Optional[bool] = True) -> None:
+                 requires_auth: Optional[bool] = True, expects_status_code: Optional[int] = None,
+                 contains_not_result: Union[Dict, str, int] = None) -> None:
         self.name: str = name
         self.client: APIClient = client
         self.method: str = method
@@ -90,10 +138,12 @@ class SmokeTest(ExpectedMixin):
         self.payload: Optional[Union[Dict, str, int]] = payload
         self.uses: Optional[Dict] = uses
         self.requires_auth = requires_auth
+        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code) if expects_status_code else None
         self.expected_result: ExpectedTest = ExpectedTest(expected_result) if expected_result else None
         self.contains_result: ContainsTest = ContainsTest(contains_result) if contains_result else None
+        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True) if contains_not_result else None
 
-    def _get_response(self, *args, **kwargs):
+    def _get_response(self, *args, **kwargs) -> Response:
         endpoint = self.endpoint
         payload = self.payload
 
@@ -110,17 +160,26 @@ class SmokeTest(ExpectedMixin):
         else:
             method = partial(getattr(self.client, self.method), endpoint)
 
-        res = method(requires_auth=self.requires_auth, *args, **kwargs)
+        return method(requires_auth=self.requires_auth, *args, **kwargs)
+
+    @staticmethod
+    def _get_response_content(res) -> Union[int, str, Dict]:
         try:
             return res.json()
         except ValueError:
             return res.text.replace('\n', '').replace('   ', ' ').replace('  ', ' ')
 
-    def run(self, *args, **kwargs) -> Optional[Response]:
+    def run(self, *args, **kwargs) -> Optional[Union[int, float, Dict]]:
         result = self._get_response(*args, **kwargs)
+        if self.expects_status_code and not self.expects_status_code.test(result, self.name, self.method):
+            return
+        result = self._get_response_content(result)
+
         if self.expected_result is not None and not self.expected_result.test(result, self.name, self.method):
             return
         if self.contains_result is not None and not self.contains_result.test(result, self.name, self.method):
+            return
+        if self.contains_not_result is not None and not self.contains_not_result.test(result, self.name, self.method):
             return
         logger.info(f'Success for {self.name}!')
         return result
@@ -128,14 +187,17 @@ class SmokeTest(ExpectedMixin):
     @classmethod
     def build(cls, step: TestConfig, client: APIClient) -> 'SmokeTest':
         return cls(
-            step.name,
-            client,
-            step.method,
-            step.endpoint,
-            step.expected,
-            step.contains,
-            step.payload,
-            step.uses
+            name=step.name,
+            client=client,
+            method=step.method,
+            endpoint=step.endpoint,
+            expects_status_code=step.expects_status_code,
+            expected_result=step.expected,
+            contains_result=step.contains,
+            contains_not_result=step.contains_not,
+            payload=step.payload,
+            uses=step.uses,
+            requires_auth=step.requires_auth,
         )
 
 
