@@ -34,7 +34,7 @@ tests:
         endpoint: 'get/'
         method: 'get'
         requires_auth: false
-        contains:
+        contains_not:
           headers:
             authorization: "JWT Some Strange Token"
   uses_keyword_example:

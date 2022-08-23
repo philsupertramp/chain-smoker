@@ -45,11 +45,16 @@ class TestConfig(BaseModel):
 
     uses: Optional[Dict] = Field(None, description='Uses variable in payload/endpoint from previous test')
 
+    # input
     payload: Optional[PayloadType] = Field(None, description='Payload used, can be Dict or Dict/JSON-string')
+
+    # output tests
+    expects_status_code: Optional[int] = Field(None, description='The expected response status code')
     expected: Optional[PayloadType] = Field(
         None, description='Exact comparison values, can be Dict or Dict/JSON-string'
     )
     contains: Optional[PayloadType] = Field(None, description='IN comparison values, can be Dict or Dict/JSON-string')
+    contains_not: Optional[PayloadType] = Field(None, description='NOT IN comparison values, can be Dict or Dict/JSON-string')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestConfig':
