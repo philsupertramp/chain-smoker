@@ -1,8 +1,9 @@
 from enum import Enum
 from typing import List, Union, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator, ValidationError, root_validator
 
+from src.chain_smoker.logger import logger
 
 PayloadType = Union[str, Dict, int]
 
@@ -31,16 +32,6 @@ class TestConfig(BaseModel):
     method: str = Field('get', description='Method to use when calling endpoint')
     endpoint: Optional[str] = Field(None, description='Target endpoint to request from')
 
-    requires_auth: bool = Field(True, description='Determines if the test uses authentication')
-
-    is_authentication: bool = Field(
-        False, description='Determines if this configuration is used to perform an authentication request'
-    )
-    auth_header_template: Optional[AuthHeaderTemplate] = Field(
-        None, description='Template configuration for header used to perform authenticated requests'
-    )
-
-    multi_step: bool = Field(False, description='Determines if test consists of single or multiple steps.')
     steps: List['TestConfig'] = Field([], description='List of steps, used when multi_step=True')
 
     uses: Optional[Dict] = Field(None, description='Uses variable in payload/endpoint from previous test')
@@ -55,6 +46,16 @@ class TestConfig(BaseModel):
     )
     contains: Optional[PayloadType] = Field(None, description='IN comparison values, can be Dict or Dict/JSON-string')
     contains_not: Optional[PayloadType] = Field(None, description='NOT IN comparison values, can be Dict or Dict/JSON-string')
+
+    auth_header_template: Optional[AuthHeaderTemplate] = Field(
+        None, description='Template configuration for header used to perform authenticated requests'
+    )
+
+    requires_auth: bool = Field(True, description='Determines if the test uses authentication')
+    is_authentication: bool = Field(
+        False, description='Determines if this configuration is used to perform an authentication request'
+    )
+    multi_step: bool = Field(False, description='Determines if test consists of single or multiple steps.')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestConfig':
@@ -72,9 +73,25 @@ class TestConfig(BaseModel):
             steps=[TestConfig.from_dict(step) for step in steps]
         )
 
+    @validator('is_authentication', 'multi_step')
+    @classmethod
+    def root_validate(cls, field_value, values, field, config):
+        if field_value:
+            if field.name == 'is_authentication':
+                if 'payload' not in values or values['payload'] is None:
+                    raise ValueError('Requires payload.')
+                if 'auth_header_template' in values and (val := values['auth_header_template']) is not None:
+                    if val.token_position is None or val.auth_header is None:
+                        raise ValueError('Requires auth_header_template\'s auth_header and token_position set.')
+                else:
+                    raise ValueError('Requires auth_header_template.')
+            elif field.name == 'multi_step' and 'steps' not in values or len(values['steps']) == 0:
+                raise ValueError('Requires steps.')
+        return field_value
+
 
 class ClientConfig(BaseModel):
-    base_url: str = Field('', description='Base URL for the client')
+    base_url: str = Field(..., description='Base URL for the client')
     auth_header: Optional[AuthHeaderTemplate] = Field(
         None, description='Header configuration for authentication when performing requests.'
     )
@@ -96,8 +113,15 @@ class TestFileConfig(BaseModel):
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestFileConfig':
         return cls(
-            client=ClientConfig.from_dict(cfg.get('client'))
+            client=ClientConfig.from_dict(cfg.get('client', {})) if cfg else None
         )
+
+    @validator('client', pre=True)
+    def root_validate(cls, values):
+        #logger.error('VALUES: ', values)
+        if values is None:
+            raise ValueError("Client undefined.")
+        return values
 
 
 class TestCaseConfig(BaseModel):
@@ -109,12 +133,15 @@ class TestCaseConfig(BaseModel):
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestCaseConfig':
-        config = TestFileConfig.from_dict(cfg.get('config'))
         return cls(
-            type=ConfigType(cfg.get('type')),
-            config=config,
-            tests=[TestConfig.from_dict({'name': name, **elem}) for name, elem in cfg.get('tests').items()]
+            type=cfg.get('type'),
+            config=TestFileConfig.from_dict(cfg.get('config')),
+            tests=[TestConfig.from_dict({'name': name, **elem}) for name, elem in cfg.get('tests', {}).items()]
         )
+
+    @validator('type')
+    def type_must_be_valid(cls, v):
+        return ConfigType(v)
 
 
 if __name__ == '__main__':

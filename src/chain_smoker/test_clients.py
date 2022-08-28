@@ -21,7 +21,7 @@ class ValueTest:
     def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
         raise NotImplementedError()
 
-    def test(self, other_value: Union[Dict, str, int], name: str, method: str) -> bool:
+    def test(self, other_value: Union[Dict, str, int, Response], name: str, method: str) -> bool:
         self.error = ''
         self.found_error = False
         self._run_test(other_value, name, method)
@@ -35,7 +35,7 @@ class ExpectedTest(ValueTest):
     Equal comparison of objects
     """
     def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
-        op = '__ne__' if self.inverse else '__eq__'
+        op = '__eq__' if self.inverse else '__ne__'
         if getattr(other_value, op)(self.value):
             self.error = f'Unexpected result for {name}!\n{other_value}\n'
             self.error += '==' if self.inverse else '!='
@@ -48,7 +48,7 @@ class ExpectedStatusCodeTest(ValueTest):
     Equal comparison of objects
     """
     def _run_test(self, other_value: Response, name: str, method: str) -> None:
-        op = '__ne__' if self.inverse else '__eq__'
+        op = '__eq__' if self.inverse else '__ne__'
         if getattr(other_value.status_code, op)(self.value):
             self.error = f'Unexpected status_code for {name}!\n{other_value.status_code}\n'
             self.error += '==' if self.inverse else '!='
@@ -76,6 +76,7 @@ class ContainsTest(ValueTest):
                              f'{self.value}  in:\n' \
                              f'{other_value}'
                 self.found_error = True
+                return
         else:
             for key, value in self.value.items():
                 if isinstance(value, dict):
@@ -85,11 +86,9 @@ class ContainsTest(ValueTest):
                                          f'{nested_key} found in:\n' \
                                          f'{other_value[key]}'
                             self.found_error = True
+                            return
                 else:
-                    if key in other_value:
-                        self.error = f'Unexpected result for {name}!\n{key} found in:\n{other_value}'
-                        self.found_error = True
-                    if other_value[key] == value:
+                    if key in other_value and other_value[key] == value:
                         self.error = f'Unexpected result for {name}!\n{other_value[key]}=={value}\n{method}'
                         self.found_error = True
 
@@ -100,6 +99,7 @@ class ContainsTest(ValueTest):
                              f'{self.value} not found in:\n' \
                              f'{other_value}'
                 self.found_error = True
+                return
         else:
             for key, value in self.value.items():
                 if isinstance(value, dict):
@@ -109,15 +109,18 @@ class ContainsTest(ValueTest):
                                          f'{nested_key} not found in:\n' \
                                          f'{other_value[key]}'
                             self.found_error = True
+                            return
                         if other_value[key][nested_key] != nested_value:
                             self.error = f'Unexpected result for {name}!\n' \
                                          f'{other_value[key][nested_key]}!={nested_value}\n' \
                                          f'{method}'
                             self.found_error = True
+                            return
                 else:
                     if key not in other_value:
                         self.error = f'Unexpected result for {name}!\n{key} not found in:\n{other_value}'
                         self.found_error = True
+                        return
                     if other_value[key] != value:
                         self.error = f'Unexpected result for {name}!\n{other_value[key]}!={value}\n{method}'
                         self.found_error = True
@@ -127,10 +130,11 @@ class SmokeTest(ExpectedMixin):
     """
     Single test entity
     """
-    def __init__(self, name: str, client: APIClient, method: str, endpoint: str, expected_result: Union[Dict, str, int],
-                 contains_result: Union[Dict, str, int], payload: Union[Dict, str, int], uses: Optional[Dict],
-                 requires_auth: Optional[bool] = True, expects_status_code: Optional[int] = None,
-                 contains_not_result: Union[Dict, str, int] = None) -> None:
+    def __init__(self, name: str, client: APIClient, method: str, endpoint: str,
+                 payload: Union[Dict, str, int], uses: Optional[Dict], requires_auth: Optional[bool] = True,
+                 expects_status_code: Optional[int] = None, expected_result: Optional[Union[Dict, str, int]] = None,
+                 contains_result: Optional[Union[Dict, str, int]] = None,
+                 contains_not_result: Optional[Union[Dict, str, int]] = None) -> None:
         self.name: str = name
         self.client: APIClient = client
         self.method: str = method
@@ -138,21 +142,24 @@ class SmokeTest(ExpectedMixin):
         self.payload: Optional[Union[Dict, str, int]] = payload
         self.uses: Optional[Dict] = uses
         self.requires_auth = requires_auth
-        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code) if expects_status_code else None
         self.expected_result: ExpectedTest = ExpectedTest(expected_result) if expected_result else None
         self.contains_result: ContainsTest = ContainsTest(contains_result) if contains_result else None
-        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True) if contains_not_result else None
+        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code) \
+            if expects_status_code else None
+        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True) \
+            if contains_not_result else None
 
     def _get_response(self, *args, **kwargs) -> Response:
         endpoint = self.endpoint
         payload = self.payload
 
         if self.uses is not None:
-            values = kwargs.pop('values', None)
+            values = kwargs.pop('values', {})
             format_values = {k: eval(v, {'values': values}) for k, v in self.uses.items()}
             endpoint = self.endpoint.format(**format_values)
-            for key, value in format_values.items():
-                payload = payload.replace('{' + key + '}', value)
+            if payload:
+                for key, value in format_values.items():
+                    payload = payload.replace('{' + key + '}', value)
 
         kwargs.pop('values', None)
         if self.payload is not None:
@@ -225,6 +232,7 @@ class ChainedSmokeTest(ExpectedMixin):
                 auth_key, auth_value = list(step.auth_header_template.auth_header.dict().items())[0]
                 auth_value = auth_value.format(token=eval(step.auth_header_template.token_position))
                 self.client.session.headers = {auth_key: auth_value}
+                self.values[step.name] = SmokeTest._get_response_content(res)
             else:
                 tests.append(
                     (step.name, SmokeTest.build(step, self.client))
@@ -234,8 +242,8 @@ class ChainedSmokeTest(ExpectedMixin):
 
     def run(self):
         logger.info(f'Running chained test case {self.name}:')
-        self._build_test()
         self.values = dict()
+        self._build_test()
         for test_name, test in self.tests.items():
 
             self.values[test_name] = test.run(values=self.values)
