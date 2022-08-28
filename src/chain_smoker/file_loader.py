@@ -30,6 +30,7 @@ class TestFileLoader(ExpectedMixin):
             return APIClient(config.config.client)
 
     def _build_tests(self) -> None:
+        self.test_methods = list()
         for test_config in self.config.tests:
             if test_config.multi_step:
                 test_case = ChainedSmokeTest.build(test_config, self.client)
