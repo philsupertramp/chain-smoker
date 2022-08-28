@@ -1,4 +1,3 @@
-from functools import partial
 from typing import List, Optional
 
 import yaml
@@ -22,7 +21,7 @@ class TestFileLoader(ExpectedMixin):
     @staticmethod
     def _load_content(filename):
         with open(filename, 'r') as stream:
-            data_loaded = yaml.full_load_all(stream)
+            data_loaded = next(yaml.full_load_all(stream))
         return data_loaded
 
     @staticmethod
