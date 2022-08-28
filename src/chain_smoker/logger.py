@@ -11,4 +11,3 @@ logging.basicConfig(
     handlers=handlers
 )
 logger = logging.getLogger('SMOKE_TESTER')
-

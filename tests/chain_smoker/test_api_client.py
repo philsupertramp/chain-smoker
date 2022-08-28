@@ -87,4 +87,3 @@ class APIClientTestCase(TestCase):
         self.client.patch('foo', {'foo': 'bar'})
 
         self.client.session.patch.assert_called_once()
-
