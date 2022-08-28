@@ -23,7 +23,13 @@ class TestCaseConfigTestCase(ConfigTestCase):
         with self.assertRaises(ValidationError):
             self.constructor.from_dict({'type': 'api-test', 'config': {}, 'tests': {}})
 
-        config = self.constructor.from_dict({'type': 'api-test', 'config': {'client': {'base_url': 'example.com'}}, 'tests': {}})
+        config = self.constructor.from_dict({
+            'type': 'api-test',
+            'config': {
+                'client': {'base_url': 'example.com'}
+            },
+            'tests': {}
+        })
         self.assertEqual(config.type, 'api-test')
 
 
@@ -44,7 +50,10 @@ class ClientConfigTestCase(ConfigTestCase):
         self.assertEqual(config.base_url, 'https://example.com')
         self.assertIsNone(config.auth_header)
 
-        config = self.constructor.from_dict({'base_url': 'https://example.com', 'auth_header': {'Authorization': 'Barer Foo'}})
+        config = self.constructor.from_dict({
+            'base_url': 'https://example.com',
+            'auth_header': {'Authorization': 'Barer Foo'}
+        })
         self.assertEqual(config.base_url, 'https://example.com')
         self.assertIsNotNone(config.auth_header)
         self.assertIsNotNone(config.auth_header.auth_header)

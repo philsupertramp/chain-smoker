@@ -1,0 +1,20 @@
+type: 'api-test'
+config:
+  client:
+    base_url: 'https://example.com'
+tests:
+  test_something:
+    method: 'get'
+    status_code: 200
+    contains:
+      This domain is for use in illustrative examples in documents. You may use this domain in literature without prior 
+      coordination or asking for permission.
+  test_same_request_twice:
+    multi_step: true
+    steps:
+      - name: 'first_request'
+        method: 'get'
+        status_code: 200
+      - name: 'second_request'
+        method: 'get'
+        status_code: 200
