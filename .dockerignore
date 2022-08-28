@@ -1,0 +1,6 @@
+*
+
+!smoke_tests/*
+!src/*
+!main.py
+!requirements.txt
