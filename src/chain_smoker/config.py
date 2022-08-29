@@ -26,6 +26,14 @@ class AuthHeaderTemplate(BaseModel):
     auth_header: AuthHeader = Field(..., description='HTTP request header configuration')
 
 
+class Cookie(BaseModel):
+    domain: str = Field(..., description='The domain the cookie is assigned to.')
+    key: str = Field(..., description='Name key of the cookie')
+    value: Optional[str] = Field(None, description='Value of the cookie')
+    path: Optional[str] = Field(None, description='Path assigned to the cookie')
+    max_age: Optional[str] = Field(None, description='Expiration time of cookie, can be datetime string or "Session"')
+
+
 class TestConfig(BaseModel):
     name: str = Field(..., description='A verbose name for the test')
     method: str = Field('get', description='Method to use when calling endpoint')
@@ -37,6 +45,7 @@ class TestConfig(BaseModel):
 
     # input
     payload: Optional[PayloadType] = Field(None, description='Payload used, can be Dict or Dict/JSON-string')
+    payload_cookies: Optional[List[Cookie]] = Field([], description='Cookies send with the request')
 
     # output tests
     expects_status_code: Optional[int] = Field(None, description='The expected response status code')
@@ -47,6 +56,7 @@ class TestConfig(BaseModel):
     contains_not: Optional[PayloadType] = Field(
         None, description='NOT IN comparison values, can be Dict or Dict/JSON-string'
     )
+    response_cookies: Optional[List[Cookie]] = Field([], description='Cookies expected with the response')
 
     auth_header_template: Optional[AuthHeaderTemplate] = Field(
         None, description='Template configuration for header used to perform authenticated requests'

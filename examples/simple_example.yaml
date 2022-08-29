@@ -13,6 +13,12 @@ tests:
     contains:
       headers:
         authorization: "SOME TOKEN"
+  get-with-cookie:
+    endpoint: get
+    method: get
+    response_cookies:
+      - domain: postman-echo.com
+        key: sails.sid
   post:
     endpoint: 'post'
     method: 'post'

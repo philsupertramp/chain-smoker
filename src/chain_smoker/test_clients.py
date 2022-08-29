@@ -5,7 +5,7 @@ from functools import partial
 from requests import Response
 
 from .api_client import APIClient
-from .config import TestConfig
+from .config import TestConfig, Cookie
 from .logger import logger
 from .mixins import ExpectedMixin
 
@@ -137,7 +137,8 @@ class SmokeTest(ExpectedMixin):
                  payload: TestValueType, uses: Optional[Dict], requires_auth: Optional[bool] = True,
                  expects_status_code: Optional[int] = None, expected_result: Optional[TestValueType] = None,
                  contains_result: Optional[TestValueType] = None,
-                 contains_not_result: Optional[TestValueType] = None) -> None:
+                 contains_not_result: Optional[TestValueType] = None,
+                 response_cookies: Optional[List[Cookie]] = None) -> None:
         self.name: str = name
         self.client: APIClient = client
         self.method: str = method
@@ -147,6 +148,7 @@ class SmokeTest(ExpectedMixin):
         self.requires_auth = requires_auth
         self.expected_result: ExpectedTest = ExpectedTest(expected_result) if expected_result else None
         self.contains_result: ContainsTest = ContainsTest(contains_result) if contains_result else None
+        self.response_cookies: ContainsTest = ContainsTest(response_cookies) if response_cookies else None
         self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code) \
             if expects_status_code else None
         self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True) \
@@ -183,6 +185,9 @@ class SmokeTest(ExpectedMixin):
         result = self._get_response(*args, **kwargs)
         if self.expects_status_code and not self.expects_status_code.test(result, self.name, self.method):
             return
+        if self.response_cookies is not None and not self.response_cookies.test(result, self.name, self.method):
+            return
+
         result = self._get_response_content(result)
 
         if self.expected_result is not None and not self.expected_result.test(result, self.name, self.method):
@@ -208,6 +213,7 @@ class SmokeTest(ExpectedMixin):
             payload=step.payload,
             uses=step.uses,
             requires_auth=step.requires_auth,
+            response_cookies=step.response_cookies,
         )
 
 
