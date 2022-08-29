@@ -1,9 +1,8 @@
 from enum import Enum
 from typing import List, Union, Dict, Optional
 
-from pydantic import BaseModel, Field, validator, ValidationError, root_validator
+from pydantic import BaseModel, Field, validator
 
-from src.chain_smoker.logger import logger
 
 PayloadType = Union[str, Dict, int]
 
@@ -45,7 +44,9 @@ class TestConfig(BaseModel):
         None, description='Exact comparison values, can be Dict or Dict/JSON-string'
     )
     contains: Optional[PayloadType] = Field(None, description='IN comparison values, can be Dict or Dict/JSON-string')
-    contains_not: Optional[PayloadType] = Field(None, description='NOT IN comparison values, can be Dict or Dict/JSON-string')
+    contains_not: Optional[PayloadType] = Field(
+        None, description='NOT IN comparison values, can be Dict or Dict/JSON-string'
+    )
 
     auth_header_template: Optional[AuthHeaderTemplate] = Field(
         None, description='Template configuration for header used to perform authenticated requests'
@@ -118,9 +119,8 @@ class TestFileConfig(BaseModel):
 
     @validator('client', pre=True)
     def root_validate(cls, values):
-        #logger.error('VALUES: ', values)
         if values is None:
-            raise ValueError("Client undefined.")
+            raise ValueError('Client undefined.')
         return values
 
 

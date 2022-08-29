@@ -10,8 +10,8 @@ config:
 tests:
   test_something:
     status_code: 200
-    contains: 
-      This domain is for use in illustrative examples in documents. 
+    contains:
+      This domain is for use in illustrative examples in documents.
       You may use this domain in literature without prior coordination or asking for permission.
 ```
 or look into `examples/`
@@ -22,7 +22,7 @@ python main.py -d examples
 ## Introduction
 It's an issue for me, my friends and my colleagues at work or university.
 We write code we test initially, but over time we forget about specific business logic
-or functionality that lies in our API endpoints.  
+or functionality that lies in our API endpoints.
 For this I started to build `chain-smoker`, a testing tool, with a functionality similar to https://uptimerobot.com.
 You build your API, set up the tests, publish it and get notified whenever something breaks.
 ```mermaid
@@ -39,7 +39,7 @@ But how to use it and how to automate the tests?
 
 ## Using `chain-smoker`
 
-First, clone the repository 
+First, clone the repository
 ```shell
 git clone git@https://github.com/philsupertramp/chain-smoker.git
 ```
@@ -85,7 +85,7 @@ docker run -v $(pwd)/examples:/usr/src/app/smoke_tests chain-smoker
 
 ## Writing tests
 After understanding what `chain-smoker` can be used for and how it can be used, we can focus on writing different kind of
-tests.  
+tests.
 In `chain-smoker` the structure is as following
 
 ```mermaid
@@ -107,8 +107,8 @@ config:
 tests:
   test_something:  # <- this is a Test
     status_code: 200
-    contains: 
-      This domain is for use in illustrative examples in documents. 
+    contains:
+      This domain is for use in illustrative examples in documents.
       You may use this domain in literature without prior coordination or asking for permission.
 ```
 
@@ -116,11 +116,11 @@ So after all it comes down to organizing and writing `YAML` files, that follow a
 
 ### Syntax
 Required for each `TestCase` configuration file are the three keys.
- 
+
 ```yaml
 type: String
 ```
-**Note: currently, only `type: 'api-test'` is implemented and available.**  
+**Note: currently, only `type: 'api-test'` is implemented and available.**
 ```yaml
 config:
   client:

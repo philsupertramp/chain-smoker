@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Union, Dict, Callable, List, Optional
+from typing import Union, Dict, List, Optional
 from functools import partial
 
 from requests import Response
@@ -10,15 +10,18 @@ from .logger import logger
 from .mixins import ExpectedMixin
 
 
+TestValueType = Union[Dict, str, int]
+
+
 class ValueTest:
     """
     Base test class handles comparison of received values with expected values
     """
-    def __init__(self, value: Union[Dict, str, int], inverse=False):
+    def __init__(self, value: TestValueType, inverse=False):
         self.value = value
         self.inverse = inverse
 
-    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
+    def _run_test(self, other_value: TestValueType, name: str, method: str) -> None:
         raise NotImplementedError()
 
     def test(self, other_value: Union[Dict, str, int, Response], name: str, method: str) -> bool:
@@ -34,7 +37,7 @@ class ExpectedTest(ValueTest):
     """
     Equal comparison of objects
     """
-    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
+    def _run_test(self, other_value: TestValueType, name: str, method: str) -> None:
         op = '__eq__' if self.inverse else '__ne__'
         if getattr(other_value, op)(self.value):
             self.error = f'Unexpected result for {name}!\n{other_value}\n'
@@ -63,13 +66,13 @@ class ContainsTest(ValueTest):
     - string/integer: Expected value part of received value (Expected IN Received)
     - dictionary: Expected (key, value)-pairs are within received values
     """
-    def _run_test(self, other_value: Union[Dict, str, int], name: str, method: str) -> None:
+    def _run_test(self, other_value: TestValueType, name: str, method: str) -> None:
         if self.inverse:
             self._run_negative_test(other_value, name, method)
         else:
             self._run_positive_test(other_value, name, method)
 
-    def _run_negative_test(self, other_value, name, method):
+    def _run_negative_test(self, other_value: TestValueType, name: str, method: str) -> None:
         if isinstance(self.value, (str, int)):
             if self.value in other_value:
                 self.error = f'Unexpected result for {name}!\n' \
@@ -92,7 +95,7 @@ class ContainsTest(ValueTest):
                         self.error = f'Unexpected result for {name}!\n{other_value[key]}=={value}\n{method}'
                         self.found_error = True
 
-    def _run_positive_test(self, other_value, name, method):
+    def _run_positive_test(self, other_value: TestValueType, name: str, method: str) -> None:
         if isinstance(self.value, (str, int)):
             if self.value not in other_value:
                 self.error = f'Unexpected result for {name}!\n' \
@@ -131,10 +134,10 @@ class SmokeTest(ExpectedMixin):
     Single test entity
     """
     def __init__(self, name: str, client: APIClient, method: str, endpoint: str,
-                 payload: Union[Dict, str, int], uses: Optional[Dict], requires_auth: Optional[bool] = True,
-                 expects_status_code: Optional[int] = None, expected_result: Optional[Union[Dict, str, int]] = None,
-                 contains_result: Optional[Union[Dict, str, int]] = None,
-                 contains_not_result: Optional[Union[Dict, str, int]] = None) -> None:
+                 payload: TestValueType, uses: Optional[Dict], requires_auth: Optional[bool] = True,
+                 expects_status_code: Optional[int] = None, expected_result: Optional[TestValueType] = None,
+                 contains_result: Optional[TestValueType] = None,
+                 contains_not_result: Optional[TestValueType] = None) -> None:
         self.name: str = name
         self.client: APIClient = client
         self.method: str = method
@@ -170,13 +173,13 @@ class SmokeTest(ExpectedMixin):
         return method(requires_auth=self.requires_auth, *args, **kwargs)
 
     @staticmethod
-    def _get_response_content(res) -> Union[int, str, Dict]:
+    def _get_response_content(res: Response) -> TestValueType:
         try:
             return res.json()
         except ValueError:
             return res.text.replace('\n', '').replace('   ', ' ').replace('  ', ' ')
 
-    def run(self, *args, **kwargs) -> Optional[Union[int, float, Dict]]:
+    def run(self, *args, **kwargs) -> Optional[TestValueType]:
         result = self._get_response(*args, **kwargs)
         if self.expects_status_code and not self.expects_status_code.test(result, self.name, self.method):
             return
@@ -245,7 +248,6 @@ class ChainedSmokeTest(ExpectedMixin):
         self.values = dict()
         self._build_test()
         for test_name, test in self.tests.items():
-
             self.values[test_name] = test.run(values=self.values)
 
     @classmethod
