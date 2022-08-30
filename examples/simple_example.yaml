@@ -19,6 +19,7 @@ tests:
     response_cookies:
       - domain: postman-echo.com
         key: sails.sid
+        max_age: Session
   post:
     endpoint: 'post'
     method: 'post'
