@@ -1,8 +1,10 @@
+import datetime
 from collections import OrderedDict
 from typing import Union, Dict, List, Optional
 from functools import partial
 
 from requests import Response
+from requests.cookies import RequestsCookieJar
 
 from .api_client import APIClient
 from .config import TestConfig, Cookie
@@ -10,7 +12,7 @@ from .logger import logger
 from .mixins import ExpectedMixin
 
 
-TestValueType = Union[Dict, str, int]
+TestValueType = Union[Dict, str, int, List[Cookie], Response, RequestsCookieJar]
 
 
 class ValueTest:
@@ -24,7 +26,7 @@ class ValueTest:
     def _run_test(self, other_value: TestValueType, name: str, method: str) -> None:
         raise NotImplementedError()
 
-    def test(self, other_value: Union[Dict, str, int, Response], name: str, method: str) -> bool:
+    def test(self, other_value: Union[Dict, str, int, Response, RequestsCookieJar], name: str, method: str) -> bool:
         self.error = ''
         self.found_error = False
         self._run_test(other_value, name, method)
@@ -103,7 +105,7 @@ class ContainsTest(ValueTest):
                              f'{other_value}'
                 self.found_error = True
                 return
-        else:
+        elif isinstance(self.value, dict):
             for key, value in self.value.items():
                 if isinstance(value, dict):
                     for nested_key, nested_value in value.items():
@@ -127,6 +129,83 @@ class ContainsTest(ValueTest):
                     if other_value[key] != value:
                         self.error = f'Unexpected result for {name}!\n{other_value[key]}!={value}\n{method}'
                         self.found_error = True
+                        return
+        else:
+            raise NotImplementedError()
+
+
+class ContainsCookiesTest(ValueTest):
+    def _get_max_age(self, cookie: Cookie) -> Union[str, datetime.datetime]:
+        if cookie.max_age.lower() == 'session':
+            return 'session'
+        try:
+            max_age = datetime.datetime.strptime(cookie.max_age, "%Y-%m-%dT%H:%M:%S%z").timestamp()
+        except ValueError:
+            if cookie.max_age[-1] == 'm':
+                max_age = datetime.datetime.now() + datetime.timedelta(minutes=int(cookie.max_age[:-1]))
+            elif cookie.max_age[-1].lower() == 'd':
+                max_age = datetime.datetime.now() + datetime.timedelta(days=int(cookie.max_age[:-1]))
+            elif cookie.max_age[-1] == 'M':
+                max_age = datetime.datetime.now() + datetime.timedelta(weeks=4 * int(cookie.max_age[:-1]))
+            elif cookie.max_age[-1] == 'W':
+                max_age = datetime.datetime.now() + datetime.timedelta(weeks=int(cookie.max_age[:-1]))
+            else:
+                raise NotImplementedError('Value not supported.')
+        return max_age
+
+    def _run_test(self, other_value: TestValueType, name: str, method: str) -> None:
+        if self.inverse:
+            raise NotImplementedError()
+        else:
+            self._run_positive_test(other_value, name, method)
+
+    def _run_positive_test(self, other_value: RequestsCookieJar, name: str, method: str) -> None:
+        not_found = []
+        for cookie in self.value:
+            found = False
+            for response_cookie in other_value:
+                if response_cookie.name != cookie.key:
+                    continue
+                found = True
+                if cookie.domain is not None and cookie.domain != response_cookie.domain:
+                    self.error = 'Unexpected result for ' \
+                                 f'{name}!\nDomain: {response_cookie.domain}!={cookie.domain}\n{method}'
+                    self.found_error = True
+                    return
+                if cookie.value is not None and response_cookie.value != cookie.value:
+                    self.error = 'Unexpected result for ' \
+                                 f'{name}!\n{response_cookie.value}!={cookie.value}\n{method}'
+                    self.found_error = True
+                    return
+                if cookie.max_age is not None:
+                    max_age = self._get_max_age(cookie)
+                    if max_age == 'session':
+                        if response_cookie.expires is None:
+                            continue
+                        else:
+                            self.error = f'Unexpected result for {name}!\n' \
+                                         f'Received for cookie "{cookie.key}" expiration of ' \
+                                         f'"{response_cookie.expires}", expected "session"'
+                            self.found_error = True
+                            return
+                    elif response_cookie.expires is None:
+                        self.error = f'Unexpected result for {name}!\n' \
+                                     f'Received for cookie "{cookie.key}" expiration of ' \
+                                     f'"session", expected "{cookie.max_age}"'
+                        self.found_error = True
+                        return
+                    elif abs(max_age.timestamp() - response_cookie.expires) >= 30:
+                        self.error = 'Unexpected result for ' \
+                                     f'{name}!\n{response_cookie.expires}!={max_age}\n{method}'
+                        self.found_error = True
+                    return
+            if not found:
+                not_found.append(cookie.key)
+
+        if not_found:
+            self.error = f'Did not find cookies {", ".join(not_found)}'
+            self.found_error = True
+            return
 
 
 class SmokeTest(ExpectedMixin):
@@ -148,7 +227,7 @@ class SmokeTest(ExpectedMixin):
         self.requires_auth = requires_auth
         self.expected_result: ExpectedTest = ExpectedTest(expected_result) if expected_result else None
         self.contains_result: ContainsTest = ContainsTest(contains_result) if contains_result else None
-        self.response_cookies: ContainsTest = ContainsTest(response_cookies) if response_cookies else None
+        self.response_cookies: ContainsTest = ContainsCookiesTest(response_cookies) if response_cookies else None
         self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code) \
             if expects_status_code else None
         self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True) \
@@ -185,7 +264,7 @@ class SmokeTest(ExpectedMixin):
         result = self._get_response(*args, **kwargs)
         if self.expects_status_code and not self.expects_status_code.test(result, self.name, self.method):
             return
-        if self.response_cookies is not None and not self.response_cookies.test(result, self.name, self.method):
+        if self.response_cookies is not None and not self.response_cookies.test(result.cookies, self.name, self.method):
             return
 
         result = self._get_response_content(result)
