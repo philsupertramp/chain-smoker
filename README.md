@@ -137,6 +137,10 @@ tests:
     endpoint: String  # the endpoint of config.client.base_url used in this test [default: '/']
     method: String  # method used in this test [default: 'get']
     payload: String  # a payload used in this test
+    payload_cookies:  #
+      - key: foo
+        value: bar
+        max_age: 5m
     multi_step: bool  # indicates that this is a chained test [default: False]
     is_authentication: bool  # indicates authentication step [default: False]
     requires_auth: bool  # indicates if test requires authentication [default: True]
@@ -145,13 +149,19 @@ tests:
     expects_not: String|Dict  # the test expects everything but this in the response
     contains: String|Dict  # test if response content contains this
     contains_not: String|Dict  # test if response content doesn't contain this
-    steps: List[Test]  # chained test configurations, required if multi_step=True
+    response_cookies: # list of cookies expected to receive as a response
+      - key: String
+        value: String
+        domain: URL
+        max_age: 5m # datetime with timezone or {N}{T} with N any int and T a time unit [m|d|W|M]
     uses:  # key value pairs of variables, used in this test
       variable_name: String  # evaluable python code to get the variable "variable_name"
     auth_header_template:
       token_position: String  # evaluable python code to get the variable "token", e.g. "res.json().get('data').get('token')"
       auth_header:
         Authorization: String  # a template string, e.g. 'JWT {token}' or just '{token}'
+    steps: List[Test]  # chained test configurations, required if multi_step=True
+
 ```
 As you can see by now the API is quite complex and feature rich, but there are many things to improve and add.
 
