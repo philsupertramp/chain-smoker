@@ -161,7 +161,6 @@ tests:
       auth_header:
         Authorization: String  # a template string, e.g. 'JWT {token}' or just '{token}'
     steps: List[Test]  # chained test configurations, required if multi_step=True
-
 ```
 As you can see by now the API is quite complex and feature rich, but there are many things to improve and add.
 

@@ -16,10 +16,19 @@ tests:
   get-with-cookie:
     endpoint: get
     method: get
-    response_cookies:
+    payload_cookies:
       - domain: postman-echo.com
         key: sails.sid
+        value: foo
         max_age: Session
+    response_cookies:
+      - domain: www.postman-echo.com
+        key: sails.sid
+        max_age: Session
+    contains:
+      headers:
+        cookie:
+          sails.sid: foo
   post:
     endpoint: 'post'
     method: 'post'
