@@ -1,11 +1,14 @@
+from datetime import timedelta, datetime
+from time import strptime
 from unittest import TestCase, mock
 
 from parameterized import parameterized
+from requests.cookies import RequestsCookieJar, create_cookie
 
 from src.chain_smoker.api_client import APIClient
-from src.chain_smoker.config import TestConfig, ClientConfig, AuthHeader, AuthHeaderTemplate
+from src.chain_smoker.config import TestConfig, ClientConfig, AuthHeader, AuthHeaderTemplate, Cookie
 from src.chain_smoker.test_clients import ExpectedTest, ExpectedStatusCodeTest, ContainsTest, SmokeTest, \
-    ChainedSmokeTest
+    ChainedSmokeTest, ContainsCookiesTest
 
 
 class ExpectedTestTestCase(TestCase):
@@ -67,6 +70,107 @@ class ContainsTestTestCase(TestCase):
         self.assertEqual(ContainsTest(input_value, inverse=True).test(other_value, '', ''), expected_result)
 
 
+class ContainsCookiesTestTesCase(TestCase):
+    @parameterized.expand([
+        (dict(key='foo', domain='example.com'), dict(name='foo', domain='example.com', value='2'), True),
+        (dict(key='foo', domain='example.com', value='2'), dict(name='foo', domain='example.com', value='2'), True),
+        (dict(key='foo', domain='example.com', value='3'), dict(name='foo', domain='example.com', value='2'), False),
+        (dict(key='foo', domain='foo.com'), dict(name='foo', domain='example.com', value='2'), False),
+        (dict(key='foo', domain='example.com'), dict(name='foo', domain='foo.com', value='2'), False),
+        (dict(key='foo', domain='example.com'), dict(name='bar', domain='example.com', value='2'), False),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='5m'),
+            dict(
+                name='foo',
+                value='2',
+                domain='example.com',
+                expires=(datetime.now() + timedelta(minutes=5)).timestamp()
+            ),
+            True
+        ),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='5m'),
+            dict(
+                name='foo',
+                value='2',
+                domain='example.com',
+                expires=(datetime.now() + timedelta(minutes=5)).timestamp()
+            ),
+            True
+        ),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='5m'),
+            dict(
+                name='foo',
+                value='2',
+                domain='example.com',
+                expires=(datetime.now() + timedelta(minutes=6)).timestamp()
+            ),
+            False
+        ),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='session'),
+            dict(
+                name='foo',
+                value='2',
+                domain='example.com',
+                expires=(datetime.now() + timedelta(minutes=5)).timestamp()
+            ),
+            False
+        ),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='5m'),
+            dict(name='foo', value='2', domain='example.com', expires=None),
+            False
+        ),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='Session'),
+            dict(name='foo', value='2', domain='example.com', expires=None),
+            True
+        ),
+        (
+            dict(key='foo', domain='example.com', value='2', max_age='session'),
+            dict(name='foo', value='2', domain='example.com', expires=None),
+            True
+        ),
+    ])
+    def test_run_test(self, test_cookie_conf, response_cookie_conf, expected_result):
+        test = ContainsCookiesTest([Cookie(**test_cookie_conf)])
+        jar = RequestsCookieJar()
+        if response_cookie_conf is not None:
+            jar.set_cookie(
+                create_cookie(**response_cookie_conf)
+            )
+        self.assertEqual(test.test(jar, '', ''), expected_result)
+
+    def test_run_test_inverse(self):
+        test = ContainsCookiesTest([Cookie(key='foo', domain='example.com', value='2')], inverse=True)
+        with self.assertRaises(NotImplementedError):
+            test.test({}, '', '')
+
+    @parameterized.expand([
+        ('Session', 'session'),
+        ('session', 'session'),
+        ('5m', timedelta(minutes=5)),
+        ('5W', timedelta(weeks=5)),
+        ('5M', timedelta(weeks=4*5)),
+        ('5D', timedelta(days=5)),
+        ('5d', timedelta(days=5)),
+    ])
+    def test_get_max_age(self, input_value, expected_output_value):
+        now = datetime.now()
+        cookie = Cookie(key='foo', domain='example.com', max_age=input_value)
+
+        if not isinstance(expected_output_value, str):
+            expected_output_value = now + expected_output_value
+
+        with mock.patch('src.chain_smoker.test_clients.datetime', create=True) as now_mock:
+            now_mock.timedelta = timedelta
+            now_mock.datetime.strptime = strptime
+            now_mock.datetime.now.return_value = now
+            self.assertEqual(ContainsCookiesTest([cookie])._get_max_age(cookie), expected_output_value)
+
+
 class SmokeTestTestCase(TestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -74,12 +178,12 @@ class SmokeTestTestCase(TestCase):
     @staticmethod
     def create_test(name, method, endpoint, payload=None, uses=None,
                     requires_auth=True, expected_status_code=200, expected=None,
-                    contains=None, contains_not=None):
+                    contains=None, contains_not=None, response_cookies=None):
         client_mock = mock.Mock()
         return SmokeTest(name=name, client=client_mock, method=method, endpoint=endpoint,
                          payload=payload, uses=uses, requires_auth=requires_auth,
                          expected_result=expected, contains_result=contains, expects_status_code=expected_status_code,
-                         contains_not_result=contains_not)
+                         contains_not_result=contains_not, response_cookies=response_cookies)
 
     def test_build(self):
         client = APIClient(ClientConfig(base_url='example.com'))
@@ -172,6 +276,28 @@ class SmokeTestTestCase(TestCase):
 
         test = self.create_test('test', 'get', 'example.com/', contains_not={'foo': 'value'})
         test.client.get.return_value = mock.Mock(status_code=200, json=mock.Mock(return_value={'key': 'value'}))
+        res = test.run()
+        self.assertIsNotNone(res)
+
+    def test_run_contains_cookies(self):
+        test = self.create_test('test', 'get', 'example.com/', response_cookies=[Cookie(key='bar', domain='example.com')])
+
+        jar = RequestsCookieJar()
+        jar.set_cookie(
+            create_cookie(name='foo', domain='example.com', value='2')
+        )
+        test.client.get.return_value = mock.Mock(
+            status_code=200, json=mock.Mock(return_value={'key': 'value'}), cookies=jar
+        )
+        res = test.run()
+        self.assertIsNone(res)
+
+        test = self.create_test(
+            'test', 'get', 'example.com/', response_cookies=[Cookie(key='foo', domain='example.com')]
+        )
+        test.client.get.return_value = mock.Mock(
+            status_code=200, json=mock.Mock(return_value={'key': 'value'}), cookies=jar
+        )
         res = test.run()
         self.assertIsNotNone(res)
 
