@@ -29,6 +29,23 @@ class ValueTest:
             logger.error(self.error)
         return not self.found_error
 
+    def _test_key_in_value(self, key, other_value, name, method):
+        if (key in other_value) == self.inverse:
+            self.error = f'Unexpected result for {name}!\n' \
+                         f'{key}{"" if self.inverse else " not"} found in:\n' \
+                         f'{other_value}\n{method}'
+            self.found_error = True
+            return True
+        return False
+
+    def _test_exact_value(self, value, other_value, name, method):
+        if (other_value == value) == self.inverse:
+            self.error = f'Unexpected result for {name}!\n{value}' \
+                         f'{"==" if self.inverse else "!="}{other_value}\n{method}'
+            self.found_error = True
+            return True
+        return False
+
 
 class ExpectedTest(ValueTest):
     """
@@ -64,69 +81,32 @@ class ContainsTest(ValueTest):
     - dictionary: Expected (key, value)-pairs are within received values
     """
     def _run_test(self, other_value: TestValueType, name: str, method: str) -> None:
-        if self.inverse:
-            self._run_negative_test(other_value, name, method)
-        else:
-            self._run_positive_test(other_value, name, method)
-
-    def _run_negative_test(self, other_value: TestValueType, name: str, method: str) -> None:
         if isinstance(self.value, (str, int)):
-            if self.value in other_value:
-                self.error = f'Unexpected result for {name}!\n' \
-                             f'{self.value}  in:\n' \
-                             f'{other_value}'
-                self.found_error = True
-                return
-        else:
-            for key, value in self.value.items():
-                if isinstance(value, dict):
-                    for nested_key, nested_value in value.items():
-                        if nested_key in other_value[key]:
-                            self.error = f'Unexpected result for {name}!\n' \
-                                         f'{nested_key} found in:\n' \
-                                         f'{other_value[key]}'
-                            self.found_error = True
-                            return
-                else:
-                    if key in other_value and other_value[key] == value:
-                        self.error = f'Unexpected result for {name}!\n{other_value[key]}=={value}\n{method}'
-                        self.found_error = True
-
-    def _run_positive_test(self, other_value: TestValueType, name: str, method: str) -> None:
-        if isinstance(self.value, (str, int)):
-            if self.value not in other_value:
-                self.error = f'Unexpected result for {name}!\n' \
-                             f'{self.value} not found in:\n' \
-                             f'{other_value}'
-                self.found_error = True
+            if self._test_value(self.value, other_value, name, method):
                 return
         elif isinstance(self.value, dict):
-            for key, value in self.value.items():
-                if isinstance(value, dict):
-                    for nested_key, nested_value in value.items():
-                        if nested_key not in other_value[key]:
-                            self.error = f'Unexpected result for {name}!\n' \
-                                         f'{nested_key} not found in:\n' \
-                                         f'{other_value[key]}'
-                            self.found_error = True
-                            return
-                        if other_value[key][nested_key] != nested_value:
-                            self.error = f'Unexpected result for {name}!\n' \
-                                         f'{other_value[key][nested_key]}!={nested_value}\n' \
-                                         f'{method}'
-                            self.found_error = True
-                            return
-                else:
-                    if key not in other_value:
-                        self.error = f'Unexpected result for {name}!\n{key} not found in:\n{other_value}'
-                        self.found_error = True
-                        return
-                    if other_value[key] != value:
-                        self.error = f'Unexpected result for {name}!\n{other_value[key]}!={value}\n{method}'
-                        self.found_error = True
-                        return
+            if self._test_dict(self.value, other_value, name, method):
+                return
         else:
             raise NotImplementedError()
+
+    def _test_dict(self, value_in, other_value, name, method) -> bool:
+        for key, value in value_in.items():
+            if isinstance(value, dict):
+                if key not in other_value and self._test_key_in_value(key, other_value, name, method):
+                    return True
+                return self._test_dict(value, other_value[key], name, method)
+            else:
+                if key in other_value:
+                    if self._test_exact_value(value, other_value[key], name, method):
+                        return True
+                elif not self.inverse:
+                    return self._test_key_in_value(key, other_value, name, method)
+
+        return False
+
+    def _test_value(self, value, other_value, name, method) -> bool:
+        return self._test_key_in_value(value, other_value, name, method)
 
 
 class ContainsCookiesTest(ValueTest):

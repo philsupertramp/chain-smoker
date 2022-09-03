@@ -45,11 +45,13 @@ class ContainsTestTestCase(TestCase):
         ('Baz', 'The story of Foo bar is extremely important to remember', False),
         ({'text': 'Foo bar'}, {'text': 'Foo bar'}, True),
         ({'text': 'Foo bar'}, {'id': 1, 'text': 'Foo bar'}, True),
+        ({'id': 1, 'text': 'Foo bar'}, {'text': 'Foo bar'}, False),
         ({'foo': 'bar'}, {'foo': 'baz'}, False),
         ({'foo': 'bar'}, {'id': 1, 'text': 'Foo bar'}, False),
         ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, True),
         ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name-2'}}, False),
         ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'address': 'name'}}, False),
+        ({'baz': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, False),
     ])
     def test_run_test(self, input_value, other_value, expected_result):
         self.assertEqual(ContainsTest(input_value).test(other_value, '', ''), expected_result)
@@ -59,6 +61,7 @@ class ContainsTestTestCase(TestCase):
         ('Baz', 'The story of Foo bar is extremely important to remember', True),
         ({'text': 'Foo bar'}, {'text': 'Foo bar'}, False),
         ({'text': 'Foo bar'}, {'id': 1, 'text': 'Foo bar'}, False),
+        ({'id': 1, 'text': 'Foo bar'}, {'text': 'Foo bar'}, False),
         ({'foo': 'bar'}, {'foo': 'baz'}, True),
         ({'foo': 'bar'}, {'id': 1, 'text': 'Foo bar'}, True),
         ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, False),

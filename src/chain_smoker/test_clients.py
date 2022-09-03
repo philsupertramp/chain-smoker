@@ -56,7 +56,12 @@ class SmokeTest(ExpectedMixin):
 
         kwargs.pop('values', None)
         if self.payload is not None:
-            method = partial(getattr(self.client, self.method), endpoint, self.build_expected(payload), **request_kwargs)
+            method = partial(
+                getattr(self.client, self.method),
+                endpoint,
+                self.evaluate_value(payload),
+                **request_kwargs
+            )
         else:
             method = partial(getattr(self.client, self.method), endpoint, **request_kwargs)
 
