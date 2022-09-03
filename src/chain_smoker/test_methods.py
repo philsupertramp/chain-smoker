@@ -100,7 +100,7 @@ class ContainsTest(ValueTest):
                 return self._test_dict(value, other_value[key])
             else:
                 if key in other_value:
-                    if self._test_exact_value(value, other_value[key]):
+                    if isinstance(other_value, dict) and self._test_exact_value(value, other_value[key]):
                         return True
                 elif not self.inverse:
                     return self._test_key_in_value(key, other_value)
