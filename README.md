@@ -57,21 +57,22 @@ pip install -r requirements.txt
 To verify your set-up is working correctly, run
 ```shell
 > python main.py -d examples
-[2022-08-28 15:14:29,370] INFO - Running for examples/example_com.yaml:
-[2022-08-28 15:14:29,824] INFO - Success for test_something!
-[2022-08-28 15:14:29,855] INFO - Running for examples/multi_step_example.yaml:
-[2022-08-28 15:14:29,855] INFO - Running chained test case reuse_authentication_header_in_following_request:
-[2022-08-28 15:14:30,480] INFO - Success for get-with-header!
-[2022-08-28 15:14:30,599] INFO - Success for second-get-with-header!
-[2022-08-28 15:14:31,074] INFO - Success for get-without-header!
-[2022-08-28 15:14:31,075] INFO - Running chained test case uses_keyword_example:
-[2022-08-28 15:14:31,319] INFO - Success for create_user!
-[2022-08-28 15:14:31,438] INFO - Success for update_username!
-[2022-08-28 15:14:31,450] INFO - Running for examples/easy_example.yaml:
-[2022-08-28 15:14:31,928] INFO - Success for get!
-[2022-08-28 15:14:32,041] INFO - Success for post!
-[2022-08-28 15:14:32,152] INFO - Success for patch!
-[2022-08-28 15:14:32,267] INFO - Success for put!
+[2022-09-03 09:55:11,401] INFO - Running for examples/multi_step_example.yaml:
+[2022-09-03 09:55:11,401] INFO - Running chained test case reuse_authentication_header_in_following_request:
+[2022-09-03 09:55:12,476] INFO - Success for get-with-header!
+[2022-09-03 09:55:12,681] INFO - Success for second-get-with-header!
+[2022-09-03 09:55:13,501] INFO - Success for get-without-header!
+[2022-09-03 09:55:13,502] INFO - Running chained test case uses_keyword_example:
+[2022-09-03 09:55:13,910] INFO - Success for create_user!
+[2022-09-03 09:55:14,116] INFO - Success for update_username!
+[2022-09-03 09:55:14,121] INFO - Running for examples/example_com.yaml:
+[2022-09-03 09:55:14,830] INFO - Success for test_something!
+[2022-09-03 09:55:14,842] INFO - Running for examples/simple_example.yaml:
+[2022-09-03 09:55:15,548] INFO - Success for get!
+[2022-09-03 09:55:15,755] INFO - Success for get-with-cookie!
+[2022-09-03 09:55:15,959] INFO - Success for post!
+[2022-09-03 09:55:16,077] INFO - Success for patch!
+[2022-09-03 09:55:16,265] INFO - Success for put!
 ```
 ### Docker
 To use the docker build, first build the container
