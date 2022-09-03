@@ -20,7 +20,7 @@ class ExpectedTestTestCase(TestCase):
         ({'id': 1}, {'id': 2}, False),
     ])
     def test_run_test(self, input_value, other_value, expected_result):
-        self.assertEqual(ExpectedTest(input_value).test(other_value, '', ''), expected_result)
+        self.assertEqual(ExpectedTest(input_value, '', '').test(other_value), expected_result)
 
 
 class ExpectedStatusCodeTestTestCase(TestCase):
@@ -29,14 +29,14 @@ class ExpectedStatusCodeTestTestCase(TestCase):
         (200, mock.Mock(status_code=400), False),
     ])
     def test_run_test(self, input_value, other_value, expected_result):
-        self.assertEqual(ExpectedStatusCodeTest(input_value).test(other_value, '', ''), expected_result)
+        self.assertEqual(ExpectedStatusCodeTest(input_value, '', '').test(other_value), expected_result)
 
     @parameterized.expand([
         (200, mock.Mock(status_code=200), False),
         (200, mock.Mock(status_code=400), True),
     ])
     def test_run_test_inverse(self, input_value, other_value, expected_result):
-        self.assertEqual(ExpectedStatusCodeTest(input_value, inverse=True).test(other_value, '', ''), expected_result)
+        self.assertEqual(ExpectedStatusCodeTest(input_value, '', '', inverse=True).test(other_value), expected_result)
 
 
 class ContainsTestTestCase(TestCase):
@@ -54,7 +54,7 @@ class ContainsTestTestCase(TestCase):
         ({'baz': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, False),
     ])
     def test_run_test(self, input_value, other_value, expected_result):
-        self.assertEqual(ContainsTest(input_value).test(other_value, '', ''), expected_result)
+        self.assertEqual(ContainsTest(input_value, '', '').test(other_value), expected_result)
 
     @parameterized.expand([
         ('Foo bar', 'The story of Foo bar is extremely important to remember', False),
@@ -68,7 +68,7 @@ class ContainsTestTestCase(TestCase):
         ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'address': 'name'}}, True),
     ])
     def test_run_test_inverse(self, input_value, other_value, expected_result):
-        self.assertEqual(ContainsTest(input_value, inverse=True).test(other_value, '', ''), expected_result)
+        self.assertEqual(ContainsTest(input_value, '', '', inverse=True).test(other_value), expected_result)
 
 
 class ContainsCookiesTestTesCase(TestCase):
@@ -136,18 +136,18 @@ class ContainsCookiesTestTesCase(TestCase):
         ),
     ])
     def test_run_test(self, test_cookie_conf, response_cookie_conf, expected_result):
-        test = ContainsCookiesTest([Cookie(**test_cookie_conf)])
+        test = ContainsCookiesTest([Cookie(**test_cookie_conf)], '', '')
         jar = RequestsCookieJar()
         if response_cookie_conf is not None:
             jar.set_cookie(
                 create_cookie(**response_cookie_conf)
             )
-        self.assertEqual(test.test(jar, '', ''), expected_result)
+        self.assertEqual(test.test(jar), expected_result)
 
     def test_run_test_inverse(self):
-        test = ContainsCookiesTest([Cookie(key='foo', domain='example.com', value='2')], inverse=True)
+        test = ContainsCookiesTest([Cookie(key='foo', domain='example.com', value='2')], '', '', inverse=True)
         with self.assertRaises(NotImplementedError):
-            test.test({}, '', '')
+            test.test({})
 
     @parameterized.expand([
         ('Session', 'session'),
@@ -169,4 +169,4 @@ class ContainsCookiesTestTesCase(TestCase):
             now_mock.timedelta = timedelta
             now_mock.datetime.strptime = strptime
             now_mock.datetime.now.return_value = now
-            self.assertEqual(ContainsCookiesTest([cookie])._get_max_age(cookie), expected_output_value)
+            self.assertEqual(ContainsCookiesTest([cookie], '', '')._get_max_age(cookie), expected_output_value)

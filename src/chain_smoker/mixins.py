@@ -2,9 +2,9 @@ import ast
 import json
 
 
-class ExpectedMixin:
+class EvaluationMixin:
     @staticmethod
-    def build_expected(expected_value):
+    def evaluate_value(expected_value):
         expected = None
         if isinstance(expected_value, (list, dict)):
             return expected_value

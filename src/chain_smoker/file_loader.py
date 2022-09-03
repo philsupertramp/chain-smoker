@@ -5,11 +5,11 @@ import yaml
 from .api_client import APIClient
 from .config import TestCaseConfig, ConfigType
 from .logger import logger
-from .mixins import ExpectedMixin
+from .mixins import EvaluationMixin
 from .test_clients import SmokeTest, ChainedSmokeTest
 
 
-class TestFileLoader(ExpectedMixin):
+class TestFileLoader(EvaluationMixin):
     def __init__(self, filename: str):
         self.filename = filename
         content = self._load_content(filename)

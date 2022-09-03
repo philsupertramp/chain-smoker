@@ -7,11 +7,11 @@ from requests import Response
 from .api_client import APIClient
 from .config import TestConfig, Cookie
 from .logger import logger
-from .mixins import ExpectedMixin
+from .mixins import EvaluationMixin
 from .test_methods import TestValueType, ExpectedTest, ContainsTest, ContainsCookiesTest, ExpectedStatusCodeTest
 
 
-class SmokeTest(ExpectedMixin):
+class SmokeTest(EvaluationMixin):
     """
     Single test entity
     """
@@ -30,12 +30,12 @@ class SmokeTest(ExpectedMixin):
         self.payload_cookies: Optional[List[Cookie]] = request_cookies
         self.uses: Optional[Dict] = uses
         self.requires_auth = requires_auth
-        self.expected_result: ExpectedTest = ExpectedTest(expected_result) if expected_result else None
-        self.contains_result: ContainsTest = ContainsTest(contains_result) if contains_result else None
-        self.response_cookies: ContainsCookiesTest = ContainsCookiesTest(response_cookies) if response_cookies else None
-        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code) \
+        self.expected_result: ExpectedTest = ExpectedTest(expected_result, name=name, method=method) if expected_result else None
+        self.contains_result: ContainsTest = ContainsTest(contains_result, name=name, method=method) if contains_result else None
+        self.response_cookies: ContainsCookiesTest = ContainsCookiesTest(response_cookies, name=name, method=method) if response_cookies else None
+        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code, name=name, method=method) \
             if expects_status_code else None
-        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True) \
+        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True, name=name, method=method) \
             if contains_not_result else None
 
     def _get_response(self, *args, **kwargs) -> Response:
@@ -77,18 +77,18 @@ class SmokeTest(ExpectedMixin):
     def run(self, *args, **kwargs) -> Optional[TestValueType]:
         result = self._get_response(*args, **kwargs)
 
-        if self.expects_status_code and not self.expects_status_code.test(result, self.name, self.method):
+        if self.expects_status_code and not self.expects_status_code.test(result):
             return
-        if self.response_cookies is not None and not self.response_cookies.test(result.cookies, self.name, self.method):
+        if self.response_cookies is not None and not self.response_cookies.test(result.cookies):
             return
 
         result = self._get_response_content(result)
 
-        if self.expected_result is not None and not self.expected_result.test(result, self.name, self.method):
+        if self.expected_result is not None and not self.expected_result.test(result):
             return
-        if self.contains_result is not None and not self.contains_result.test(result, self.name, self.method):
+        if self.contains_result is not None and not self.contains_result.test(result):
             return
-        if self.contains_not_result is not None and not self.contains_not_result.test(result, self.name, self.method):
+        if self.contains_not_result is not None and not self.contains_not_result.test(result):
             return
         logger.info(f'Success for {self.name}!')
         return result
@@ -112,7 +112,7 @@ class SmokeTest(ExpectedMixin):
         )
 
 
-class ChainedSmokeTest(ExpectedMixin):
+class ChainedSmokeTest(EvaluationMixin):
     """
     Chained test entity.
 
@@ -132,7 +132,7 @@ class ChainedSmokeTest(ExpectedMixin):
             if step.is_authentication:
                 # TODO: include "uses" here
                 # NOTE: do NOT remove this assignment, `res` is a magic value for users
-                res = getattr(self.client, step.method)(step.endpoint, data=self.build_expected(step.payload))
+                res = getattr(self.client, step.method)(step.endpoint, data=self.evaluate_value(step.payload))
                 auth_key, auth_value = list(step.auth_header_template.auth_header.dict().items())[0]
                 auth_value = auth_value.format(token=eval(step.auth_header_template.token_position))
                 self.client.session.headers = {auth_key: auth_value}
