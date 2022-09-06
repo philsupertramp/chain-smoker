@@ -36,6 +36,13 @@ tests:
     contains:
       headers:
         authorization: "SOME TOKEN"
+  post-list:
+    endpoint: 'post'
+    method: 'post'
+    payload: '[{"id": 1}]'
+    contains:
+      data:
+        id: 1
   patch:
     endpoint: 'patch'
     method: 'patch'

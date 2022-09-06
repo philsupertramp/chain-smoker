@@ -28,7 +28,11 @@ class ValueTest:
         self.found_error = False
         self._run_test(other_value)
         if self.found_error:
-            logger.error(self.error)
+            if isinstance(self.error, list):
+                for error in self.error:
+                    logger.error(error)
+            else:
+                logger.error(self.error)
         return not self.found_error
 
     def _test_key_in_value(self, key, other_value):
@@ -93,11 +97,27 @@ class ContainsTest(ValueTest):
             raise NotImplementedError()
 
     def _test_dict(self, value_in, other_value) -> bool:
+        if isinstance(other_value, list):
+            errors = []
+            for elem in other_value:
+                self.found_error = self._test_dict(value_in, elem)
+                if self.found_error:
+                    errors.append(self.error)
+                    self.found_error = False
+                    self.error = None
+            self.error = errors
+            self.found_error = len(self.error) > 0
+            return self.found_error
+
         for key, value in value_in.items():
             if isinstance(value, dict):
-                if key not in other_value and self._test_key_in_value(key, other_value):
-                    return True
-                return self._test_dict(value, other_value[key])
+                if key in other_value:
+                    return self._test_dict(value, other_value[key])
+                else:
+                    self.found_error = not self.inverse
+                    self.error = f'Unexpected for {self.name}!\n'
+                    self.error += f'Didn\'t find key "{key}" in {other_value}\n{self.value}\n{self.method}'
+                    return self.found_error
             else:
                 if key in other_value:
                     if isinstance(other_value, dict) and self._test_exact_value(value, other_value[key]):
