@@ -57,22 +57,26 @@ pip install -r requirements.txt
 To verify your set-up is working correctly, run
 ```shell
 > python main.py -d examples
-[2022-09-03 09:55:11,401] INFO - Running for examples/multi_step_example.yaml:
-[2022-09-03 09:55:11,401] INFO - Running chained test case reuse_authentication_header_in_following_request:
-[2022-09-03 09:55:12,476] INFO - Success for get-with-header!
-[2022-09-03 09:55:12,681] INFO - Success for second-get-with-header!
-[2022-09-03 09:55:13,501] INFO - Success for get-without-header!
-[2022-09-03 09:55:13,502] INFO - Running chained test case uses_keyword_example:
-[2022-09-03 09:55:13,910] INFO - Success for create_user!
-[2022-09-03 09:55:14,116] INFO - Success for update_username!
-[2022-09-03 09:55:14,121] INFO - Running for examples/example_com.yaml:
-[2022-09-03 09:55:14,830] INFO - Success for test_something!
-[2022-09-03 09:55:14,842] INFO - Running for examples/simple_example.yaml:
-[2022-09-03 09:55:15,548] INFO - Success for get!
-[2022-09-03 09:55:15,755] INFO - Success for get-with-cookie!
-[2022-09-03 09:55:15,959] INFO - Success for post!
-[2022-09-03 09:55:16,077] INFO - Success for patch!
-[2022-09-03 09:55:16,265] INFO - Success for put!
+[2022-09-14 13:37:32,554] INFO - Running for examples/complex-yaml.yaml:
+[2022-09-14 13:37:38,292] INFO - Success for test_something!
+[2022-09-14 13:37:38,302] INFO - Running for examples/multi_step_example.yaml:
+[2022-09-14 13:37:38,302] INFO - Running chained test case reuse_authentication_header_in_following_request:
+[2022-09-14 13:37:38,951] INFO - Success for get-with-header!
+[2022-09-14 13:37:39,069] INFO - Success for second-get-with-header!
+[2022-09-14 13:37:39,776] INFO - Success for get-without-header!
+[2022-09-14 13:37:39,777] INFO - Running chained test case uses_keyword_example:
+[2022-09-14 13:37:40,013] INFO - Success for create_user!
+[2022-09-14 13:37:40,135] INFO - Success for update_username!
+[2022-09-14 13:37:40,139] INFO - Running for examples/example_com.yaml:
+[2022-09-14 13:37:40,901] INFO - Success for test_something!
+[2022-09-14 13:37:40,923] INFO - Running for examples/simple_example.yaml:
+[2022-09-14 13:37:41,608] INFO - Success for get!
+[2022-09-14 13:37:41,723] INFO - Success for get-with-cookie!
+[2022-09-14 13:37:42,064] INFO - Success for post!
+[2022-09-14 13:37:42,186] INFO - Success for post-list-of-ids!
+[2022-09-14 13:37:42,304] INFO - Success for post-list-of-objects!
+[2022-09-14 13:37:42,420] INFO - Success for patch!
+[2022-09-14 13:37:42,539] INFO - Success for put!
 ```
 ### Docker
 To use the docker build, first build the container
