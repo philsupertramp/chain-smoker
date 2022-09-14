@@ -10,8 +10,8 @@ config:
 tests:
   test_something:
     status_code: 200
-    contains: 
-      This domain is for use in illustrative examples in documents. 
+    contains:
+      This domain is for use in illustrative examples in documents.
       You may use this domain in literature without prior coordination or asking for permission.
 ```
 or look into `examples/`
@@ -22,7 +22,7 @@ python main.py -d examples
 ## Introduction
 It's an issue for me, my friends and my colleagues at work or university.
 We write code we test initially, but over time we forget about specific business logic
-or functionality that lies in our API endpoints.  
+or functionality that lies in our API endpoints.
 For this I started to build `chain-smoker`, a testing tool, with a functionality similar to https://uptimerobot.com.
 You build your API, set up the tests, publish it and get notified whenever something breaks.
 ```mermaid
@@ -39,7 +39,7 @@ But how to use it and how to automate the tests?
 
 ## Using `chain-smoker`
 
-First, clone the repository 
+First, clone the repository
 ```shell
 git clone git@https://github.com/philsupertramp/chain-smoker.git
 ```
@@ -57,21 +57,22 @@ pip install -r requirements.txt
 To verify your set-up is working correctly, run
 ```shell
 > python main.py -d examples
-[2022-08-28 15:14:29,370] INFO - Running for examples/example_com.yaml:
-[2022-08-28 15:14:29,824] INFO - Success for test_something!
-[2022-08-28 15:14:29,855] INFO - Running for examples/multi_step_example.yaml:
-[2022-08-28 15:14:29,855] INFO - Running chained test case reuse_authentication_header_in_following_request:
-[2022-08-28 15:14:30,480] INFO - Success for get-with-header!
-[2022-08-28 15:14:30,599] INFO - Success for second-get-with-header!
-[2022-08-28 15:14:31,074] INFO - Success for get-without-header!
-[2022-08-28 15:14:31,075] INFO - Running chained test case uses_keyword_example:
-[2022-08-28 15:14:31,319] INFO - Success for create_user!
-[2022-08-28 15:14:31,438] INFO - Success for update_username!
-[2022-08-28 15:14:31,450] INFO - Running for examples/easy_example.yaml:
-[2022-08-28 15:14:31,928] INFO - Success for get!
-[2022-08-28 15:14:32,041] INFO - Success for post!
-[2022-08-28 15:14:32,152] INFO - Success for patch!
-[2022-08-28 15:14:32,267] INFO - Success for put!
+[2022-09-03 09:55:11,401] INFO - Running for examples/multi_step_example.yaml:
+[2022-09-03 09:55:11,401] INFO - Running chained test case reuse_authentication_header_in_following_request:
+[2022-09-03 09:55:12,476] INFO - Success for get-with-header!
+[2022-09-03 09:55:12,681] INFO - Success for second-get-with-header!
+[2022-09-03 09:55:13,501] INFO - Success for get-without-header!
+[2022-09-03 09:55:13,502] INFO - Running chained test case uses_keyword_example:
+[2022-09-03 09:55:13,910] INFO - Success for create_user!
+[2022-09-03 09:55:14,116] INFO - Success for update_username!
+[2022-09-03 09:55:14,121] INFO - Running for examples/example_com.yaml:
+[2022-09-03 09:55:14,830] INFO - Success for test_something!
+[2022-09-03 09:55:14,842] INFO - Running for examples/simple_example.yaml:
+[2022-09-03 09:55:15,548] INFO - Success for get!
+[2022-09-03 09:55:15,755] INFO - Success for get-with-cookie!
+[2022-09-03 09:55:15,959] INFO - Success for post!
+[2022-09-03 09:55:16,077] INFO - Success for patch!
+[2022-09-03 09:55:16,265] INFO - Success for put!
 ```
 ### Docker
 To use the docker build, first build the container
@@ -85,7 +86,7 @@ docker run -v $(pwd)/examples:/usr/src/app/smoke_tests chain-smoker
 
 ## Writing tests
 After understanding what `chain-smoker` can be used for and how it can be used, we can focus on writing different kind of
-tests.  
+tests.
 In `chain-smoker` the structure is as following
 
 ```mermaid
@@ -107,8 +108,8 @@ config:
 tests:
   test_something:  # <- this is a Test
     status_code: 200
-    contains: 
-      This domain is for use in illustrative examples in documents. 
+    contains:
+      This domain is for use in illustrative examples in documents.
       You may use this domain in literature without prior coordination or asking for permission.
 ```
 
@@ -116,11 +117,11 @@ So after all it comes down to organizing and writing `YAML` files, that follow a
 
 ### Syntax
 Required for each `TestCase` configuration file are the three keys.
- 
+
 ```yaml
 type: String
 ```
-**Note: currently, only `type: 'api-test'` is implemented and available.**  
+**Note: currently, only `type: 'api-test'` is implemented and available.**
 ```yaml
 config:
   client:
@@ -137,6 +138,10 @@ tests:
     endpoint: String  # the endpoint of config.client.base_url used in this test [default: '/']
     method: String  # method used in this test [default: 'get']
     payload: String  # a payload used in this test
+    payload_cookies:  #
+      - key: foo
+        value: bar
+        max_age: 5m
     multi_step: bool  # indicates that this is a chained test [default: False]
     is_authentication: bool  # indicates authentication step [default: False]
     requires_auth: bool  # indicates if test requires authentication [default: True]
@@ -145,13 +150,18 @@ tests:
     expects_not: String|Dict  # the test expects everything but this in the response
     contains: String|Dict  # test if response content contains this
     contains_not: String|Dict  # test if response content doesn't contain this
-    steps: List[Test]  # chained test configurations, required if multi_step=True
+    response_cookies: # list of cookies expected to receive as a response
+      - key: String
+        value: String
+        domain: URL
+        max_age: 5m # datetime with timezone or {N}{T} with N any int and T a time unit [m|d|W|M]
     uses:  # key value pairs of variables, used in this test
       variable_name: String  # evaluable python code to get the variable "variable_name"
     auth_header_template:
       token_position: String  # evaluable python code to get the variable "token", e.g. "res.json().get('data').get('token')"
       auth_header:
         Authorization: String  # a template string, e.g. 'JWT {token}' or just '{token}'
+    steps: List[Test]  # chained test configurations, required if multi_step=True
 ```
 As you can see by now the API is quite complex and feature rich, but there are many things to improve and add.
 

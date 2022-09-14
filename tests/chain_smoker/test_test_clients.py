@@ -1,70 +1,11 @@
 from unittest import TestCase, mock
 
 from parameterized import parameterized
+from requests.cookies import RequestsCookieJar, create_cookie
 
 from src.chain_smoker.api_client import APIClient
-from src.chain_smoker.config import TestConfig, ClientConfig, AuthHeader, AuthHeaderTemplate
-from src.chain_smoker.test_clients import ExpectedTest, ExpectedStatusCodeTest, ContainsTest, SmokeTest, \
-    ChainedSmokeTest
-
-
-class ExpectedTestTestCase(TestCase):
-    @parameterized.expand([
-        (1, 1, True),
-        (1, 2, False),
-        (1, '1', False),
-        ('foo', 'foo', True),
-        ('foo', 'bar', False),
-        ({'id': 1}, {'id': 1}, True),
-        ({'id': 1}, {'id': 2}, False),
-    ])
-    def test_run_test(self, input_value, other_value, expected_result):
-        self.assertEqual(ExpectedTest(input_value).test(other_value, '', ''), expected_result)
-
-
-class ExpectedStatusCodeTestTestCase(TestCase):
-    @parameterized.expand([
-        (200, mock.Mock(status_code=200), True),
-        (200, mock.Mock(status_code=400), False),
-    ])
-    def test_run_test(self, input_value, other_value, expected_result):
-        self.assertEqual(ExpectedStatusCodeTest(input_value).test(other_value, '', ''), expected_result)
-
-    @parameterized.expand([
-        (200, mock.Mock(status_code=200), False),
-        (200, mock.Mock(status_code=400), True),
-    ])
-    def test_run_test_inverse(self, input_value, other_value, expected_result):
-        self.assertEqual(ExpectedStatusCodeTest(input_value, inverse=True).test(other_value, '', ''), expected_result)
-
-
-class ContainsTestTestCase(TestCase):
-    @parameterized.expand([
-        ('Foo bar', 'The story of Foo bar is extremely important to remember', True),
-        ('Baz', 'The story of Foo bar is extremely important to remember', False),
-        ({'text': 'Foo bar'}, {'text': 'Foo bar'}, True),
-        ({'text': 'Foo bar'}, {'id': 1, 'text': 'Foo bar'}, True),
-        ({'foo': 'bar'}, {'foo': 'baz'}, False),
-        ({'foo': 'bar'}, {'id': 1, 'text': 'Foo bar'}, False),
-        ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, True),
-        ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name-2'}}, False),
-        ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'address': 'name'}}, False),
-    ])
-    def test_run_test(self, input_value, other_value, expected_result):
-        self.assertEqual(ContainsTest(input_value).test(other_value, '', ''), expected_result)
-
-    @parameterized.expand([
-        ('Foo bar', 'The story of Foo bar is extremely important to remember', False),
-        ('Baz', 'The story of Foo bar is extremely important to remember', True),
-        ({'text': 'Foo bar'}, {'text': 'Foo bar'}, False),
-        ({'text': 'Foo bar'}, {'id': 1, 'text': 'Foo bar'}, False),
-        ({'foo': 'bar'}, {'foo': 'baz'}, True),
-        ({'foo': 'bar'}, {'id': 1, 'text': 'Foo bar'}, True),
-        ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, False),
-        ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'address': 'name'}}, True),
-    ])
-    def test_run_test_inverse(self, input_value, other_value, expected_result):
-        self.assertEqual(ContainsTest(input_value, inverse=True).test(other_value, '', ''), expected_result)
+from src.chain_smoker.config import TestConfig, ClientConfig, AuthHeader, AuthHeaderTemplate, Cookie
+from src.chain_smoker.test_clients import SmokeTest, ChainedSmokeTest
 
 
 class SmokeTestTestCase(TestCase):
@@ -74,12 +15,12 @@ class SmokeTestTestCase(TestCase):
     @staticmethod
     def create_test(name, method, endpoint, payload=None, uses=None,
                     requires_auth=True, expected_status_code=200, expected=None,
-                    contains=None, contains_not=None):
+                    contains=None, contains_not=None, response_cookies=None):
         client_mock = mock.Mock()
         return SmokeTest(name=name, client=client_mock, method=method, endpoint=endpoint,
                          payload=payload, uses=uses, requires_auth=requires_auth,
                          expected_result=expected, contains_result=contains, expects_status_code=expected_status_code,
-                         contains_not_result=contains_not)
+                         contains_not_result=contains_not, response_cookies=response_cookies)
 
     def test_build(self):
         client = APIClient(ClientConfig(base_url='example.com'))
@@ -172,6 +113,28 @@ class SmokeTestTestCase(TestCase):
 
         test = self.create_test('test', 'get', 'example.com/', contains_not={'foo': 'value'})
         test.client.get.return_value = mock.Mock(status_code=200, json=mock.Mock(return_value={'key': 'value'}))
+        res = test.run()
+        self.assertIsNotNone(res)
+
+    def test_run_contains_cookies(self):
+        test = self.create_test('test', 'get', 'example.com/', response_cookies=[Cookie(key='bar', domain='example.com')])
+
+        jar = RequestsCookieJar()
+        jar.set_cookie(
+            create_cookie(name='foo', domain='example.com', value='2')
+        )
+        test.client.get.return_value = mock.Mock(
+            status_code=200, json=mock.Mock(return_value={'key': 'value'}), cookies=jar
+        )
+        res = test.run()
+        self.assertIsNone(res)
+
+        test = self.create_test(
+            'test', 'get', 'example.com/', response_cookies=[Cookie(key='foo', domain='example.com')]
+        )
+        test.client.get.return_value = mock.Mock(
+            status_code=200, json=mock.Mock(return_value={'key': 'value'}), cookies=jar
+        )
         res = test.run()
         self.assertIsNotNone(res)
 

@@ -13,6 +13,22 @@ tests:
     contains:
       headers:
         authorization: "SOME TOKEN"
+  get-with-cookie:
+    endpoint: get
+    method: get
+    payload_cookies:
+      - domain: postman-echo.com
+        key: sails.sid
+        value: foo
+        max_age: Session
+    response_cookies:
+      - domain: www.postman-echo.com
+        key: sails.sid
+        max_age: Session
+    contains:
+      headers:
+        cookie:
+          sails.sid: foo
   post:
     endpoint: 'post'
     method: 'post'
@@ -20,6 +36,19 @@ tests:
     contains:
       headers:
         authorization: "SOME TOKEN"
+  post-list-of-ids:
+    endpoint: 'post'
+    method: 'post'
+    payload: '[1, 2, 3]'
+    contains:
+      data: 1
+  post-list-of-objects:
+    endpoint: 'post'
+    method: 'post'
+    payload: '[{"id": 1}]'
+    contains:
+      data:
+        id: 1
   patch:
     endpoint: 'patch'
     method: 'patch'
