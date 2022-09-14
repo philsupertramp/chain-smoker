@@ -36,7 +36,13 @@ tests:
     contains:
       headers:
         authorization: "SOME TOKEN"
-  post-list:
+  post-list-of-ids:
+    endpoint: 'post'
+    method: 'post'
+    payload: '[1, 2, 3]'
+    contains:
+      data: 1
+  post-list-of-objects:
     endpoint: 'post'
     method: 'post'
     payload: '[{"id": 1}]'

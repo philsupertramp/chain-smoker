@@ -54,6 +54,10 @@ class ContainsTestTestCase(TestCase):
         ({'baz': {'id': 1, 'field': 'name'}}, {'nested_obj': {'id': 1, 'field': 'name'}}, False),
         ({'id': 1}, [{'id': 1}], True),
         ({'id': 1}, [{'id': 2}], False),
+        (1, [1, 2, 3], True),
+        (4, [1, 2, 3], False),
+        ({'payload': 1}, {'payload': [1, 2, 3]}, True),
+        ({'payload': 4}, {'payload': [1, 2, 3]}, False),
     ])
     def test_run_test(self, input_value, other_value, expected_result):
         self.assertEqual(ContainsTest(input_value, '', '').test(other_value), expected_result)
@@ -70,6 +74,10 @@ class ContainsTestTestCase(TestCase):
         ({'nested_obj': {'id': 1, 'field': 'name'}}, {'nested_obj': {'address': 'name'}}, True),
         ({'id': 1}, [{'id': 1}], False),
         ({'id': 1}, [{'id': 2}], True),
+        (1, [1, 2, 3], False),
+        (4, [1, 2, 3], True),
+        ({'payload': 1}, {'payload': [1, 2, 3]}, False),
+        ({'payload': 4}, {'payload': [1, 2, 3]}, True),
     ])
     def test_run_test_inverse(self, input_value, other_value, expected_result):
         self.assertEqual(ContainsTest(input_value, '', '', inverse=True).test(other_value), expected_result)

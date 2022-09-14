@@ -1,7 +1,7 @@
 some_payload: &payload
   key:
-    nested_obj: value
-    nested_value: 1
+    nested_obj:!!string value
+    nested_value:!!int 1
 
 type: 'api-test'
 config:

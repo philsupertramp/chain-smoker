@@ -96,18 +96,21 @@ class ContainsTest(ValueTest):
         else:
             raise NotImplementedError()
 
+    def _test_list(self, value_in, other_value) -> bool:
+        errors = []
+        for elem in other_value:
+            self.found_error = self._test_dict(value_in, elem)
+            if self.found_error:
+                errors.append(self.error)
+                self.found_error = False
+                self.error = None
+        self.error = errors
+        self.found_error = len(self.error) > 0
+        return self.found_error
+
     def _test_dict(self, value_in, other_value) -> bool:
         if isinstance(other_value, list):
-            errors = []
-            for elem in other_value:
-                self.found_error = self._test_dict(value_in, elem)
-                if self.found_error:
-                    errors.append(self.error)
-                    self.found_error = False
-                    self.error = None
-            self.error = errors
-            self.found_error = len(self.error) > 0
-            return self.found_error
+            return self._test_list(value_in, other_value)
 
         for key, value in value_in.items():
             if isinstance(value, dict):
@@ -119,8 +122,11 @@ class ContainsTest(ValueTest):
                     self.error += f'Didn\'t find key "{key}" in {other_value}\n{self.value}\n{self.method}'
                     return self.found_error
             else:
-                if key in other_value:
-                    if isinstance(other_value, dict) and self._test_exact_value(value, other_value[key]):
+                if key in other_value and isinstance(other_value, dict):
+                    if isinstance(other_value[key], list):
+                        if self._test_key_in_value(value, other_value[key]):
+                            return True
+                    elif self._test_exact_value(value, other_value[key]):
                         return True
                 elif not self.inverse:
                     return self._test_key_in_value(key, other_value)
