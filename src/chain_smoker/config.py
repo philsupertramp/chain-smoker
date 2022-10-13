@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 from typing import List, Union, Dict, Optional
 
@@ -118,13 +119,31 @@ class ClientConfig(BaseModel):
         )
 
 
+class EnvVar(BaseModel):
+    internal_key: str = Field(..., description='internal key')
+    external_key: str = Field(..., description='external key')
+
+    @validator('external_key')
+    @classmethod
+    def root_validate(cls, field_value, values, field, config):
+        if field_value is None or field_value not in os.environ:
+            raise ValueError('Key undefined.')
+        return field_value
+
+
 class TestFileConfig(BaseModel):
     client: ClientConfig = Field(..., description='Configuration of the client used in each test.')
+    env: List[EnvVar] = Field([], description='List of environment variables to use.')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestFileConfig':
+        if cfg is None:
+            return cls()
+
         return cls(
-            client=ClientConfig.from_dict(cfg.get('client', {})) if cfg else None
+            client=ClientConfig.from_dict(cfg.get('client', {})) if cfg else None,
+            env=[EnvVar(internal_key=key, external_key=value) for key, value in cfg.get('env', {}).items()]
+            if 'env' in cfg else []
         )
 
     @validator('client', pre=True)

@@ -43,9 +43,10 @@ class SmokeTest(EvaluationMixin):
         payload = self.payload
         request_kwargs = {}
 
+        env = kwargs.pop('env', {})
         if self.uses is not None:
             values = kwargs.pop('values', {})
-            format_values = {k: eval(v, {'values': values}) for k, v in self.uses.items()}
+            format_values = {k: eval(v, {'values': values, 'env': env}) for k, v in self.uses.items()}
             endpoint = self.endpoint.format(**format_values)
             if payload:
                 for key, value in format_values.items():
@@ -75,6 +76,7 @@ class SmokeTest(EvaluationMixin):
             return res.text.replace('\n', '').replace('   ', ' ').replace('  ', ' ')
 
     def run(self, *args, **kwargs) -> Optional[TestValueType]:
+
         result = self._get_response(*args, **kwargs)
 
         if self.expects_status_code and not self.expects_status_code.test(result):
@@ -144,12 +146,12 @@ class ChainedSmokeTest(EvaluationMixin):
 
         self.tests = OrderedDict(tests)
 
-    def run(self):
+    def run(self, env=None):
         logger.info(f'Running chained test case {self.name}:')
         self.values = dict()
         self._build_test()
         for test_name, test in self.tests.items():
-            self.values[test_name] = test.run(values=self.values)
+            self.values[test_name] = test.run(values=self.values, env=env)
 
     @classmethod
     def build(cls, step: TestConfig, client: APIClient) -> 'ChainedSmokeTest':

@@ -157,7 +157,7 @@ class ChainedSmokeTestTestCase(TestCase):
         test_2 = TestConfig(
             name='test_2', is_authentication=True, payload='{}',
             auth_header_template=AuthHeaderTemplate(
-                auth_header=AuthHeader(Authorization='Barer foo'),
+                auth_header=AuthHeader(Authorization='Bearer foo'),
                 token_position='res.json().get(\'token\')'
             )
         )
@@ -191,7 +191,7 @@ class ChainedSmokeTestTestCase(TestCase):
         test_2 = TestConfig(
             name='test_2', is_authentication=True, payload='{}',
             auth_header_template=AuthHeaderTemplate(
-                auth_header=AuthHeader(Authorization='Barer foo'),
+                auth_header=AuthHeader(Authorization='Bearer foo'),
                 token_position='res.json().get(\'token\')'
             )
         )

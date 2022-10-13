@@ -1,4 +1,5 @@
-from unittest import TestCase
+import os
+from unittest import TestCase, mock
 
 from pydantic import ValidationError
 
@@ -36,10 +37,27 @@ class TestCaseConfigTestCase(ConfigTestCase):
 class TestFileConfigTestCase(ConfigTestCase):
     constructor = TestFileConfig
 
-    def test_from_dict(self):
+    def test_from_dict_client_only(self):
         config = self.constructor.from_dict({'client': {'base_url': 'example.com'}})
 
         self.assertEqual(config.client.base_url, 'example.com')
+
+    @mock.patch.dict(os.environ, {"bar": "baz"})
+    def test_from_dict_with_env(self):
+        config = self.constructor.from_dict({'client': {'base_url': 'example.com'}, 'env': {'foo': 'bar'}})
+
+        self.assertEqual(config.env[0].internal_key, 'foo')
+        self.assertEqual(config.env[0].external_key, 'bar')
+
+    def test_from_dict_with_env_unset_error(self):
+        with self.assertRaises(ValidationError):
+            self.constructor.from_dict({'client': {'base_url': 'example.com'}, 'env': {'foo': 'bar'}})
+
+        with self.assertRaises(ValidationError):
+            self.constructor.from_dict({'client': {'base_url': 'example.com'}, 'env': {None: 'bar'}})
+
+        with self.assertRaises(ValidationError):
+            self.constructor.from_dict({'client': {'base_url': 'example.com'}, 'env': {'foo': None}})
 
 
 class ClientConfigTestCase(ConfigTestCase):
@@ -52,12 +70,12 @@ class ClientConfigTestCase(ConfigTestCase):
 
         config = self.constructor.from_dict({
             'base_url': 'https://example.com',
-            'auth_header': {'Authorization': 'Barer Foo'}
+            'auth_header': {'Authorization': 'Bearer Foo'}
         })
         self.assertEqual(config.base_url, 'https://example.com')
         self.assertIsNotNone(config.auth_header)
         self.assertIsNotNone(config.auth_header.auth_header)
-        self.assertEqual(config.auth_header.auth_header.Authorization, 'Barer Foo')
+        self.assertEqual(config.auth_header.auth_header.Authorization, 'Bearer Foo')
 
 
 class TestConfigTestCase(ConfigTestCase):
@@ -95,7 +113,7 @@ class TestConfigTestCase(ConfigTestCase):
                 'name': 'name',
                 'is_authentication': True,
                 'payload': '{}',
-                'auth_header_template': {'auth_header': {'Authorization': 'Barer {token}'}}
+                'auth_header_template': {'auth_header': {'Authorization': 'Bearer {token}'}}
             })
 
         self.constructor.from_dict({
@@ -103,7 +121,7 @@ class TestConfigTestCase(ConfigTestCase):
             'is_authentication': True,
             'payload': '{}',
             'auth_header_template': {
-                'token_position': 'res.json().get("token")', 'auth_header': {'Authorization': 'Barer {token}'}
+                'token_position': 'res.json().get("token")', 'auth_header': {'Authorization': 'Bearer {token}'}
             }
         })
 
