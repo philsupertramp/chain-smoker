@@ -133,7 +133,7 @@ class EnvVar(BaseModel):
 
 class TestFileConfig(BaseModel):
     client: ClientConfig = Field(..., description='Configuration of the client used in each test.')
-    env: List[EnvVar] = Field([], description='List of environment variables to use.')
+    env: Optional[List[EnvVar]] = Field({}, description='List of environment variables to use.')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestFileConfig':
