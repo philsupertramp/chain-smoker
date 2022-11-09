@@ -25,7 +25,7 @@ class TestFileWriter(EvaluationMixin):
                 TestConfig(
                     name=f'{self.request.get("Method").lower()}_{url.hostname}_{url.path.replace("/", "_")}',
                     method=self.request.get('Method').lower(),
-                    endpoint=url.path,
+                    endpoint=f'{url.path}?{url.query}',
                     payload=self.evaluate_value(self.request.get('Payload', "{}") or "{}"),
                     expected_status_code=self.response.get('Status_code'),
                     expected=self.evaluate_value(self.response.get('Body', "{}"))
