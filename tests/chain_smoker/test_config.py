@@ -42,7 +42,7 @@ class TestFileConfigTestCase(ConfigTestCase):
 
         self.assertEqual(config.client.base_url, 'example.com')
 
-    @mock.patch.dict(os.environ, {"bar": "baz"})
+    @mock.patch.dict(os.environ, {'bar': 'baz'})
     def test_from_dict_with_env(self):
         config = self.constructor.from_dict({'client': {'base_url': 'example.com'}, 'env': {'foo': 'bar'}})
 

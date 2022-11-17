@@ -4,16 +4,21 @@ from typing import List, Optional, Dict, Any
 import yaml
 
 from .api_client import APIClient
-from .config import TestCaseConfig, ConfigType, EnvVar
+from .config import TestCaseConfig, ConfigType
 from .logger import logger
 from .mixins import EvaluationMixin
 from .test_clients import SmokeTest, ChainedSmokeTest
 
 
 class TestFileLoader(EvaluationMixin):
-    def __init__(self, filename: str):
-        self.filename = filename
-        content = self._load_content(filename)
+    def __init__(self, filename: Optional[str] = None, cfg: Optional[Dict] = None):
+        if filename:
+            self.filename = filename
+            content = self._load_content(filename)
+        else:
+            assert cfg, 'Requires `cfg` in case no `filename` provided.'
+            content = cfg
+
         self.config: TestCaseConfig = TestCaseConfig.from_dict(content)
         self.client: Optional[APIClient] = self._get_client(self.config)
         self.env_vars: Dict[str, Any] = self._get_env_vars(self.config)

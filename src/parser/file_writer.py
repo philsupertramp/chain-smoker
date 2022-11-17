@@ -1,40 +1,48 @@
 import urllib.parse
 
 import yaml
+from pydantic import BaseModel, Field
 
-from src.chain_smoker.config import TestCaseConfig, ConfigType, TestFileConfig, ClientConfig, TestConfig
+from src.chain_smoker.config import TestCaseConfig, ConfigType, Response, Request
 from src.chain_smoker.mixins import EvaluationMixin
 
 
-class TestFileWriter(EvaluationMixin):
+class TestFileWriter(BaseModel, EvaluationMixin):
+    request: Request = Field()
+    response: Response = Field()
+    target_file: str = Field()
+
     def __init__(self, request_dict, target_file: str):
-        self.request = request_dict.get('Request')
-        self.response = request_dict.get('Response')
-        self.target_file = target_file
+        super().__init__(
+            request=Request(**request_dict.get('Request', {})),
+            response=Response(**request_dict.get('Response', {})),
+            target_file=target_file
+        )
 
     def _build_config(self):
-        url = urllib.parse.urlparse(self.request.get('Path'))
-        config = TestCaseConfig(
+        url = urllib.parse.urlparse(self.request.Path)
+        test_name = f'{self.request.Method.lower()}-{str(url.hostname).replace(".", "_")}{url.path.replace("/", "__")}'
+        config = TestCaseConfig.from_dict(dict(
             type=ConfigType.API_TEST,
-            config=TestFileConfig(
-                client=ClientConfig(
+            config=dict(
+                client=dict(
                     base_url=f'{url.scheme}://{url.hostname}'
                 ),
+                env={}
             ),
-            tests=[
-                TestConfig(
-                    name=f'{self.request.get("Method").lower()}_{url.hostname}_{url.path.replace("/", "_")}',
-                    method=self.request.get('Method').lower(),
-                    endpoint=f'{url.path}?{url.query}',
-                    payload=self.evaluate_value(self.request.get('Payload', "{}") or "{}"),
-                    expected_status_code=self.response.get('Status_code'),
-                    expected=self.evaluate_value(self.response.get('Body', "{}"))
+            tests={
+                test_name: dict(
+                    name=test_name,
+                    method=self.request.Method.lower(),
+                    endpoint=f'{url.path}{f"?{url.query}" if url.query else ""}',
+                    payload=self.evaluate_value(self.request.Payload or '{}'),
+                    expects_status_code=self.response.Status_code,
+                    expected=self.evaluate_value(self.response.Body)
                 )
-            ]
-        )
+            }
+        ))
         obj_dict = config.dict()
-        obj_dict['type'] = ConfigType.API_TEST.value
-        obj_dict['tests'] = {obj.get('name'): obj for obj in obj_dict['tests']}
+        obj_dict['type'] = obj_dict['type'].value
         return obj_dict
 
     def write(self):

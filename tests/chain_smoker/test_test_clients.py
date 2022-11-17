@@ -117,7 +117,9 @@ class SmokeTestTestCase(TestCase):
         self.assertIsNotNone(res)
 
     def test_run_contains_cookies(self):
-        test = self.create_test('test', 'get', 'example.com/', response_cookies=[Cookie(key='bar', domain='example.com')])
+        test = self.create_test(
+            'test', 'get', 'example.com/', response_cookies=[Cookie(key='bar', domain='example.com')]
+        )
 
         jar = RequestsCookieJar()
         jar.set_cookie(

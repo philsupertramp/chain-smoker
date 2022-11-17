@@ -4,7 +4,6 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
-    -   id: detect-aws-credentials
     -   id: detect-private-key
     -   id: double-quote-string-fixer
     -   id: name-tests-test

@@ -30,13 +30,21 @@ class SmokeTest(EvaluationMixin):
         self.payload_cookies: Optional[List[Cookie]] = request_cookies
         self.uses: Optional[Dict] = uses
         self.requires_auth = requires_auth
-        self.expected_result: ExpectedTest = ExpectedTest(expected_result, name=name, method=method) if expected_result else None
-        self.contains_result: ContainsTest = ContainsTest(contains_result, name=name, method=method) if contains_result else None
-        self.response_cookies: ContainsCookiesTest = ContainsCookiesTest(response_cookies, name=name, method=method) if response_cookies else None
-        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code, name=name, method=method) \
-            if expects_status_code else None
-        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True, name=name, method=method) \
-            if contains_not_result else None
+        self.expected_result: ExpectedTest = ExpectedTest(
+            expected_result, name=name, method=method
+        ) if expected_result else None
+        self.contains_result: ContainsTest = ContainsTest(
+            contains_result, name=name, method=method
+        ) if contains_result else None
+        self.response_cookies: ContainsCookiesTest = ContainsCookiesTest(
+            response_cookies, name=name, method=method
+        ) if response_cookies else None
+        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(
+            expects_status_code, name=name, method=method
+        ) if expects_status_code else None
+        self.contains_not_result: ContainsTest = ContainsTest(
+            contains_not_result, inverse=True, name=name, method=method
+        ) if contains_not_result else None
 
     def _get_response(self, *args, **kwargs) -> Response:
         endpoint = self.endpoint

@@ -6,7 +6,7 @@ import uuid
 
 from src.parser.file_writer import TestFileWriter
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--directory', type=str, default='smoke_tests/',
                         help='directory to write to')

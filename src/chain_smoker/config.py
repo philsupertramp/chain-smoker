@@ -133,7 +133,7 @@ class EnvVar(BaseModel):
 
 class TestFileConfig(BaseModel):
     client: ClientConfig = Field(..., description='Configuration of the client used in each test.')
-    env: Optional[List[EnvVar]] = Field({}, description='List of environment variables to use.')
+    env: Optional[List[EnvVar]] = Field(None, description='List of environment variables to use.')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestFileConfig':
@@ -143,6 +143,7 @@ class TestFileConfig(BaseModel):
         return cls(
             client=ClientConfig.from_dict(cfg.get('client', {})) if cfg else None,
             env=[EnvVar(internal_key=key, external_key=value) for key, value in cfg.get('env', {}).items()]
+            if isinstance(cfg.get('env'), dict) else cfg.get('env')
             if 'env' in cfg else []
         )
 
@@ -166,11 +167,26 @@ class TestCaseConfig(BaseModel):
             type=cfg.get('type'),
             config=TestFileConfig.from_dict(cfg.get('config')),
             tests=[TestConfig.from_dict({'name': name, **elem}) for name, elem in cfg.get('tests', {}).items()]
+            if isinstance(cfg.get('tests'), dict) else cfg.get('tests')
         )
 
     @validator('type')
     def type_must_be_valid(cls, v):
         return ConfigType(v)
+
+
+class Request(BaseModel):
+    Payload: PayloadType = Field(...)
+    Protocol: str = Field(...)
+    Path: str = Field(...)
+    Method: str = Field(...)
+    Headers: Dict = Field(...)
+
+
+class Response(BaseModel):
+    Status_code: int = Field(200)
+    Body: PayloadType = Field(...)
+    Headers: Dict = Field(...)
 
 
 if __name__ == '__main__':

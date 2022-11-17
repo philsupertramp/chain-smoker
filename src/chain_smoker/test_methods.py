@@ -142,7 +142,7 @@ class ContainsCookiesTest(ValueTest):
         if cookie.max_age.lower() == 'session':
             return 'session'
         try:
-            max_age = datetime.datetime.strptime(cookie.max_age, "%Y-%m-%dT%H:%M:%S%z").timestamp()
+            max_age = datetime.datetime.strptime(cookie.max_age, '%Y-%m-%dT%H:%M:%S%z').timestamp()
         except ValueError:
             if cookie.max_age[-1] == 'm':
                 max_age = datetime.datetime.now() + datetime.timedelta(minutes=int(cookie.max_age[:-1]))

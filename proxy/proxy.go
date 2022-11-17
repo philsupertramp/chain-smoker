@@ -103,7 +103,7 @@ func main() {
 
   host_ptr := flag.String("host", "https://example.com", "The host to forward to.")
   flag.Parse()
-  
+
   new_host = *host_ptr
   mux := http.NewServeMux()
   remote, err := url.Parse(new_host)
