@@ -29,6 +29,15 @@ function ensure_pipe() {
 
 ensure_pipe parser_buffer
 
+if [ ! -f "./parser/proxy/build/proxy" ]
+then
+  mkdir -p "./parser/proxy/build"
+  wget "https://github.com/philsupertramp/chain-smoker/releases/download/parser/proxy--linux-amd64.tar.gz" -q -P "./parser/proxy/build"
+  tar -xzf "./parser/proxy/build/proxy--linux-amd64.tar.gz" -C "./parser/proxy/build/"
+  rm -rf "./parser/proxy/build/proxy--linux-amd64.tar.gz"
+  chmod +x "./parser/proxy/build/proxy"
+fi
+
 ./parser/proxy/build/proxy --host="${HOSTNAME}" > parser_buffer &
 
 PROXY_PID=$!
