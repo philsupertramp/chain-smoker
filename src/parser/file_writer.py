@@ -1,4 +1,6 @@
+import os
 import urllib.parse
+from typing import Optional, Dict
 
 import yaml
 from pydantic import BaseModel, Field
@@ -7,17 +9,50 @@ from src.chain_smoker.config import TestCaseConfig, ConfigType, Response, Reques
 from src.chain_smoker.mixins import EvaluationMixin
 
 
+class RewriteConfig(BaseModel):
+    skip: Dict
+    headers: Dict
+    requests: Dict
+
+    @classmethod
+    def from_file(cls, filename):
+        if filename is None:
+            filename = os.path.join(os.path.dirname(__file__), '../../parse-conf.yaml')
+
+        try:
+            with open(filename, 'r') as file:
+                content = next(yaml.full_load_all(file))
+        except FileNotFoundError:
+            content = {'skip': {}, 'headers': {}, 'requests': {}}
+
+        return cls(**content)
+
+
 class TestFileWriter(BaseModel, EvaluationMixin):
     request: Request = Field()
     response: Response = Field()
     target_file: str = Field()
+    config: Optional[RewriteConfig] = Field()
 
-    def __init__(self, request_dict, target_file: str):
+    def __init__(self, request_dict, target_file: str, config_file: Optional[str] = None):
         super().__init__(
             request=Request(**request_dict.get('Request', {})),
             response=Response(**request_dict.get('Response', {})),
-            target_file=target_file
+            target_file=target_file,
+            config=RewriteConfig.from_file(config_file)
         )
+
+    def _clean_response(self, response):
+        url = urllib.parse.urlparse(self.request.Path)
+        if url.path in self.config.requests:
+            conf = self.config.requests[url.path]
+            if self.request.Method.lower() in conf:
+                conf = conf[self.request.Method.lower()]
+                if conf.get('ignore_response'):
+                    for key in conf.get('ignore_response'):
+                        if key in response:
+                            del response[key]
+        return response
 
     def _build_config(self):
         url = urllib.parse.urlparse(self.request.Path)
@@ -37,7 +72,8 @@ class TestFileWriter(BaseModel, EvaluationMixin):
                     endpoint=f'{url.path}{f"?{url.query}" if url.query else ""}',
                     payload=self.evaluate_value(self.request.Payload or '{}'),
                     expects_status_code=self.response.Status_code,
-                    expected=self.evaluate_value(self.response.Body)
+                    contains=self._clean_response(self.evaluate_value(self.response.Body)),
+                    headers=self.config.headers
                 )
             }
         ))
@@ -46,6 +82,9 @@ class TestFileWriter(BaseModel, EvaluationMixin):
         return obj_dict
 
     def write(self):
+        url = urllib.parse.urlparse(self.request.Path)
+        if url.path in self.config.skip and self.request.Method.upper() in self.config.skip[url.path]:
+            return
         config = self._build_config()
 
         with open(self.target_file, 'w') as file:
