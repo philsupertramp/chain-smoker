@@ -18,16 +18,18 @@ class APIClient:
         self.session = Session()
         if config.auth_header is not None:
             self.session.headers.update(config.auth_header.auth_header.dict())
+        self.default_headers = self.session.headers.copy()
 
     def _build_url(self, path: str) -> str:
         return urljoin(self.base_url, path)
 
     def _request(self, method: str, path: str, requires_auth: bool = True, **kwargs) -> Response:
-        if requires_auth:
-            session = self.session
-        else:
+        session = self.session
+        if not requires_auth:
             session = Session()
-        return getattr(session, method)(self._build_url(path), **kwargs)
+        rsp = getattr(session, method)(self._build_url(path), **kwargs)
+        self.set_headers(self.default_headers)
+        return rsp
 
     def _request_with_payload(self, method: str, path: str, data: Union[Dict, str],
                               payload_type: Optional[PayloadType] = None, *args, **kwargs) -> Response:
@@ -52,3 +54,7 @@ class APIClient:
     def patch(self, path: str, data: Union[Dict, str], payload_type: Optional[PayloadType] = None,
               *args, **kwargs) -> Response:
         return self._request_with_payload('patch', path, data, payload_type, *args, **kwargs)
+
+    def set_headers(self, headers):
+        if headers:
+            self.session.headers = headers

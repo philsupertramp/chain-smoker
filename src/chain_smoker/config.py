@@ -47,6 +47,7 @@ class TestConfig(BaseModel):
     # input
     payload: Optional[PayloadType] = Field(None, description='Payload used, can be Dict or Dict/JSON-string')
     payload_cookies: Optional[List[Cookie]] = Field([], description='Cookies send with the request')
+    headers: Optional[Dict] = Field(None, description='Request headers to send.')
 
     # output tests
     expects_status_code: Optional[int] = Field(None, description='The expected response status code')
@@ -58,6 +59,7 @@ class TestConfig(BaseModel):
         None, description='NOT IN comparison values, can be Dict or Dict/JSON-string'
     )
     response_cookies: Optional[List[Cookie]] = Field([], description='Cookies expected with the response')
+    response_headers: Optional[Dict] = Field(None, description='Expected response headers to receive.')
 
     auth_header_template: Optional[AuthHeaderTemplate] = Field(
         None, description='Template configuration for header used to perform authenticated requests'
@@ -72,16 +74,10 @@ class TestConfig(BaseModel):
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestConfig':
         auth_header_template = cfg.pop('auth_header_template', None)
-        payload = cfg.pop('payload', None)
-        contains = cfg.pop('contains', None)
-        expected = cfg.pop('expected', None)
         steps = cfg.pop('steps', [])
         return cls(
             **cfg,
             auth_header_template=AuthHeaderTemplate(**auth_header_template) if auth_header_template else None,
-            payload=payload,
-            expected=expected,
-            contains=contains,
             steps=[TestConfig.from_dict(step) for step in steps]
         )
 
@@ -127,7 +123,7 @@ class EnvVar(BaseModel):
     @classmethod
     def root_validate(cls, field_value, values, field, config):
         if field_value is None or field_value not in os.environ:
-            raise ValueError('Key undefined.')
+            raise ValueError(f'Env var "{field_value}" undefined.')
         return field_value
 
 
