@@ -21,3 +21,4 @@ jobs:
         goarch: amd64
         project_path: parser/proxy
         binary_name: proxy
+        release_name: proxy
