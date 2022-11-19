@@ -1,6 +1,4 @@
 *
-
-!examples/*
 !src/*
-!main.py
+!chain-smoker.py
 !requirements.txt

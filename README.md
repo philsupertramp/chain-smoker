@@ -16,7 +16,7 @@ tests:
 ```
 or look into `examples/`
 ```shell
-python main.py -d examples
+./chain-smoker.py -d examples
 ```
 
 ## Introduction
@@ -56,7 +56,7 @@ pip install -r requirements.txt
 ```
 To verify your set-up is working correctly, run
 ```shell
-> python main.py -d examples
+> bar=baz ./chain-smoker.py -d examples
 [2022-09-14 13:37:32,554] INFO - Running for examples/complex-yaml.yaml:
 [2022-09-14 13:37:38,292] INFO - Success for test_something!
 [2022-09-14 13:37:38,302] INFO - Running for examples/multi_step_example.yaml:
@@ -85,7 +85,7 @@ docker build -t chain-smoker .
 ```
 Then run the container with your test directory mounted into `/usr/src/app/smoke_tests`
 ```shell
-docker run -v $(pwd)/examples:/usr/src/app/smoke_tests chain-smoker
+docker run -v $(pwd)/examples:/usr/src/app/smoke_tests -e bar=baz chain-smoker
 ```
 
 ## Writing tests
