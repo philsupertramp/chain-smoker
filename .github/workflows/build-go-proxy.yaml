@@ -1,0 +1,23 @@
+name: Build proxy
+
+on:
+  push:
+    branches:
+    - main
+    - generator
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+    steps:
+    - uses: actions/checkout@v3
+    - name: Go Release Binaries
+      uses: wangyoucao577/go-release-action@v1.33
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        goos: linux
+        goarch: amd64
+        project_path: parser/proxy
+        binary_name: proxy

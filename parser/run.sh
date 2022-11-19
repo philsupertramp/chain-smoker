@@ -29,7 +29,7 @@ function ensure_pipe() {
 
 ensure_pipe parser_buffer
 
-go run parser/proxy/proxy.go --host="${HOSTNAME}" > parser_buffer &
+./parser/proxy/build/proxy --host="${HOSTNAME}" > parser_buffer &
 
 PROXY_PID=$!
 
