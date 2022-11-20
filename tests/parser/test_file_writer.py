@@ -2,6 +2,7 @@ import os
 import tempfile
 from unittest import TestCase, mock
 
+import yaml
 from parameterized import parameterized
 from pydantic import ValidationError
 
@@ -16,6 +17,15 @@ class FileWriterTestCase(TestCase):
         cls.sample_request = {
             'Request': {
                 'Method': 'get', 'Path': 'https://example.com/get/', 'Payload': {},
+                'Protocol': 'HTTP/1', 'Headers': {},
+            },
+            'Response': {
+                'Status_code': 200, 'Body': {'foo': 1, 'bar': 'xxxxxx'}, 'Headers': {},
+            }
+        }
+        cls.sample_post_request = {
+            'Request': {
+                'Method': 'post', 'Path': 'https://example.com/post/', 'Payload': {'foo': 1, 'bar': 'xxxxxx'},
                 'Protocol': 'HTTP/1', 'Headers': {},
             },
             'Response': {
@@ -112,6 +122,7 @@ class FileWriterTestCase(TestCase):
 
     @parameterized.expand([
         ({'/get/': {'get': {'ignore_response': ['bar']}}}, {'foo': 1}),
+        ({'/get/': {'get': {'ignore_response': ['unknown-key']}}}, {'foo': 1, 'bar': 'xxxxxx'}),
         ({'/get/': {'get': {'ignore_response': ['bar']}}}, {'foo': 1}),
         ({'/get/': {'get': {'ignore_response': ['bar']}}}, {'foo': 1}),
         ({'/get/': {'get': {}}}, {'foo': 1, 'bar': 'xxxxxx'}),
@@ -135,8 +146,46 @@ class FileWriterTestCase(TestCase):
 
             self.assertDictEqual(test.get('contains'), expected_response, test)
 
+    @parameterized.expand([
+        ({}, {'foo': 1, 'bar': 'xxxxxx'}),
+        ({'/post/': {'post': {}}}, {'foo': 1, 'bar': 'xxxxxx'}),
+        ({'/post/': {'post': {'payload': {'unknown-key': 'yyyyyy'}}}}, {'foo': 1, 'bar': 'xxxxxx'}),
+        ({'/post/': {'post': {'payload': {'foo': 1, 'bar': 'yyyyyy'}}}}, {'foo': 1, 'bar': 'yyyyyy'}),
+        ({'/post/': {'post': {'payload': {'foo': 2}}}}, {'foo': 2, 'bar': 'xxxxxx'}),
+    ])
+    def test_clean_payload(self, request_config, expected_response):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # you can e.g. create a file here:
+            temp_file_path = os.path.join(temp_dir, 'someFile.yaml')
+            writer = TestFileWriter(self.sample_post_request, temp_file_path)
+
+            writer.config.requests = request_config
+            config = writer._build_config()
+            test = config.get('tests')[0]
+
+            self.assertDictEqual(test.get('payload'), expected_response, test)
+
 
 class RewriteConfigTestCase(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.sample_config = {
+            'skip': {},
+            'request': {},
+            'headers': {},
+        }
+
     def test_from_file_unknown_file(self):
         config = RewriteConfig.from_file('foo')
         self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}})
+
+    def test_from_file_known_invalid_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_file_path = os.path.join(temp_dir, 'someFile.yaml')
+
+            with open(temp_file_path, 'w') as file:
+                yaml.dump(self.sample_config, file)
+
+            config = RewriteConfig.from_file(temp_file_path)
+            self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}})

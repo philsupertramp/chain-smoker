@@ -45,17 +45,28 @@ class TestFileWriter(BaseModel, EvaluationMixin):
             config=RewriteConfig.from_file(config_file)
         )
 
-    def _clean_response(self, response):
+    def _clean_dict(self, obj, conf_key, replace=False):
         url = urllib.parse.urlparse(self.request.Path)
         if url.path in self.config.requests:
             conf = self.config.requests[url.path]
             if self.request.Method.lower() in conf:
                 conf = conf[self.request.Method.lower()]
-                if conf.get('ignore_response'):
-                    for key in conf.get('ignore_response'):
-                        if key in response:
-                            del response[key]
-        return response
+                if conf.get(conf_key):
+                    if replace:
+                        for key, value in conf.get(conf_key, {}).items():
+                            if key in obj:
+                                obj[key] = value
+                    else:
+                        for key in conf.get(conf_key, []):
+                            if key in obj:
+                                del obj[key]
+        return obj
+
+    def _clean_response(self, response):
+        return self._clean_dict(response, 'ignore_response')
+
+    def _clean_payload(self, payload):
+        return self._clean_dict(payload, 'payload', replace=True)
 
     def _build_config(self):
         url = urllib.parse.urlparse(self.request.Path)
@@ -72,7 +83,7 @@ class TestFileWriter(BaseModel, EvaluationMixin):
                     name=test_name,
                     method=self.request.Method.lower(),
                     endpoint=f'{url.path}{f"?{url.query}" if url.query else ""}',
-                    payload=self.evaluate_value(self.request.Payload or '{}'),
+                    payload=self._clean_payload(self.evaluate_value(self.request.Payload or '{}')),
                     expects_status_code=self.response.Status_code,
                     contains=self._clean_response(self.evaluate_value(self.response.Body)),
                     headers=self.config.headers
