@@ -1,4 +1,3 @@
-*
-!src/*
-!chain-smoker.py
-!requirements.txt
+.venv/
+.github/
+.git/

@@ -29,29 +29,25 @@ function ensure_pipe() {
 
 ensure_pipe parser_buffer
 
-if [ ! -f "./parser/proxy/build/proxy" ]
-then
-  mkdir -p "./parser/proxy/build"
-  wget "https://github.com/philsupertramp/chain-smoker/releases/download/parser/proxy--linux-amd64.tar.gz" -q -P "./parser/proxy/build"
-  tar -xzf "./parser/proxy/build/proxy--linux-amd64.tar.gz" -C "./parser/proxy/build/"
-  rm -rf "./parser/proxy/build/proxy--linux-amd64.tar.gz"
-  chmod +x "./parser/proxy/build/proxy"
-fi
-
 ./parser/proxy/build/proxy --host="${HOSTNAME}" > parser_buffer &
 
 PROXY_PID=$!
 
-settings_file=$(mktemp)
-echo "on" > "${settings_file}"
+mkdir -p conf
+if [ ! -f "conf/parse-conf.yaml" ]
+then
+  touch "conf/parse-conf.yaml"
+fi
+settings_file="conf/parse-conf.yaml"
+
 echo "Write to ${settings_file} to turn off the parser."
 
 IFS=$'\n'
 while read -r line ; do
-  if [[ "$(cat "${settings_file}")" == "on" ]]
+  if [[ "$(cat "${settings_file}")" == *"active: true"* ]]
   then
     (
-      echo "${line}" | .venv/bin/python -m parser.parser -d "${OUTPUT_DIR}" -f "${OUTPUT_PREFIX}"
+      echo "${line}" | python -m parser.parser -d "${OUTPUT_DIR}" -f "${OUTPUT_PREFIX}"
     )
   fi
 done < parser_buffer

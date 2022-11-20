@@ -17,7 +17,7 @@ class RewriteConfig(BaseModel):
     @classmethod
     def from_file(cls, filename):
         if filename is None:
-            filename = os.path.join(os.path.dirname(__file__), '../../parse-conf.yaml')
+            filename = os.path.join(os.path.dirname(__file__), '../../conf/parse-conf.yaml')
 
         try:
             with open(filename, 'r') as file:
@@ -62,8 +62,7 @@ class TestFileWriter(BaseModel, EvaluationMixin):
             config=dict(
                 client=dict(
                     base_url=f'{url.scheme}://{url.hostname}'
-                ),
-                env={}
+                )
             ),
             tests={
                 test_name: dict(
