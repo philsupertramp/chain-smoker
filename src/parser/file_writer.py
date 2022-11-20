@@ -19,11 +19,14 @@ class RewriteConfig(BaseModel):
         if filename is None:
             filename = os.path.join(os.path.dirname(__file__), '../../conf/parse-conf.yaml')
 
+        content = {'skip': {}, 'headers': {}, 'requests': {}}
+
         try:
             with open(filename, 'r') as file:
-                content = next(yaml.full_load_all(file))
+                file_content = next(yaml.full_load_all(file))
+            content.update(file_content)
         except FileNotFoundError:
-            content = {'skip': {}, 'headers': {}, 'requests': {}}
+            pass
 
         return cls(**content)
 
