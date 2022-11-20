@@ -86,6 +86,8 @@ To verify your set-up is working correctly, run
 [2022-09-14 13:37:42,539] INFO - Success for put!
 ```
 ### Docker
+#### Online Repositories
+To get the most recent stable version (`latest`) of the tools, consult the [docker-hub](https://hub.docker.com/search?q=philsupertramp%2Fchain-smoker).
 #### Build
 To use the docker build, first build the container(s)
 
