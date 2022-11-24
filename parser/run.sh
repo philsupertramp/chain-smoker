@@ -15,7 +15,6 @@ trap ctrl_c INT
 
 function ctrl_c() {
   kill "${PROXY_PID}"
-  rm "${settings_file}"
   exit 0
 }
 

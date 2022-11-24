@@ -5,7 +5,7 @@ from typing import List, Union, Dict, Optional
 from pydantic import BaseModel, Field, validator
 
 
-PayloadType = Union[str, Dict, int]
+PayloadType = Union[str, Dict, int, List]
 
 
 class ConfigType(str, Enum):

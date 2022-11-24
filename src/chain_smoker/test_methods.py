@@ -98,17 +98,24 @@ class ContainsTest(ValueTest):
     - string/integer: Expected value part of received value (Expected IN Received)
     - dictionary: Expected (key, value)-pairs are within received values
     """
-    def _run_test(self, other_value: TestValueType) -> None:
-        if isinstance(self.value, (str, int)):
-            if self._test_value(self.value, other_value):
-                return
-        elif isinstance(self.value, dict):
-            if self._test_dict(self.value, other_value):
-                return
+    def _run_test_for_value(self, value_in, other_value: TestValueType) -> bool:
+        if isinstance(value_in, (str, int)):
+            if self._test_value(value_in, other_value):
+                return True
+        elif isinstance(value_in, dict):
+            if self._test_dict(value_in, other_value):
+                return True
+        elif isinstance(value_in, list):
+            if self._test_list(value_in, other_value):
+                return True
         else:
             raise NotImplementedError()
+        return False
 
-    def _test_list(self, value_in, other_value) -> bool:
+    def _run_test(self, other_value: TestValueType) -> None:
+        self._run_test_for_value(self.value, other_value)
+
+    def _test_response_list(self, value_in, other_value) -> bool:
         errors = []
         for elem in other_value:
             self.found_error = self._test_dict(value_in, elem)
@@ -120,9 +127,23 @@ class ContainsTest(ValueTest):
         self.found_error = len(self.error) > 0
         return self.found_error
 
+    def _test_list(self, value_in, other_value) -> bool:
+        val = False
+        errors = []
+        for value in value_in:
+            new_val = self._run_test_for_value(value, other_value)
+            val |= new_val
+            if new_val:
+                self.found_error = True
+                error = f'Unexpected for {self.name}!\n'
+                error += f'Didn\'t find key "{value}" in {other_value}'
+                errors.append(error)
+        self.error = '\n'.join(errors)
+        return val
+
     def _test_dict(self, value_in, other_value) -> bool:
         if isinstance(other_value, list):
-            return self._test_list(value_in, other_value)
+            return self._test_response_list(value_in, other_value)
 
         for key, value in value_in.items():
             if isinstance(value, dict):

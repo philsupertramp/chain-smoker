@@ -1,6 +1,7 @@
 import os
+import re
 import urllib.parse
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import yaml
 from pydantic import BaseModel, Field
@@ -11,6 +12,7 @@ from src.chain_smoker.mixins import EvaluationMixin
 
 class RewriteConfig(BaseModel):
     skip: Dict
+    skip_files: List
     headers: Dict
     requests: Dict
 
@@ -19,7 +21,7 @@ class RewriteConfig(BaseModel):
         if filename is None:
             filename = os.path.join(os.path.dirname(__file__), '../../conf/parse-conf.yaml')
 
-        content = {'skip': {}, 'headers': {}, 'requests': {}}
+        content = {'skip': {}, 'skip_files': [], 'headers': {}, 'requests': {}}
 
         try:
             with open(filename, 'r') as file:
@@ -45,7 +47,7 @@ class TestFileWriter(BaseModel, EvaluationMixin):
             config=RewriteConfig.from_file(config_file)
         )
 
-    def _clean_dict(self, obj, conf_key, replace=False):
+    def _clean_dict(self, obj, conf_key, replace=False, regex_replace=False):
         url = urllib.parse.urlparse(self.request.Path)
         if url.path in self.config.requests:
             conf = self.config.requests[url.path]
@@ -56,6 +58,13 @@ class TestFileWriter(BaseModel, EvaluationMixin):
                         for key, value in conf.get(conf_key, {}).items():
                             if key in obj:
                                 obj[key] = value
+                    elif regex_replace:
+                        output = []
+                        for value in conf.get(conf_key):
+                            match = re.findall(fr'{value}', obj)
+                            if match:
+                                output.extend(match)
+                        obj = output
                     else:
                         for key in conf.get(conf_key, []):
                             if key in obj:
@@ -63,14 +72,32 @@ class TestFileWriter(BaseModel, EvaluationMixin):
         return obj
 
     def _clean_response(self, response):
-        return self._clean_dict(response, 'ignore_response')
+        response = self._clean_dict(response, 'ignore_response')
+        return self._clean_dict(response, 'keep', regex_replace=True)
 
     def _clean_payload(self, payload):
         return self._clean_dict(payload, 'payload', replace=True)
 
+    def _build_payload(self):
+        payload = ''
+        if self.request.Payload:
+            payload = self._clean_payload(self.evaluate_value(self.request.Payload))
+        return payload
+
+    def _build_body(self):
+        if 'zip' in self.request.Headers.get('Accept-Encoding', [''])[0]:
+            body = self.response.Body
+        elif isinstance(self.response.Body, str) and '<html' in self.response.Body.lower():
+            body = self._clean_response(self.response.Body)
+        else:
+            body = self._clean_response(self.evaluate_value(self.response.Body))
+        return body
+
     def _build_config(self):
         url = urllib.parse.urlparse(self.request.Path)
         test_name = f'{self.request.Method.lower()}-{str(url.hostname).replace(".", "_")}{url.path.replace("/", "__")}'
+        payload = self._build_payload()
+        body = self._build_body()
         config = TestCaseConfig.from_dict(dict(
             type=ConfigType.API_TEST,
             config=dict(
@@ -83,10 +110,13 @@ class TestFileWriter(BaseModel, EvaluationMixin):
                     name=test_name,
                     method=self.request.Method.lower(),
                     endpoint=f'{url.path}{f"?{url.query}" if url.query else ""}',
-                    payload=self._clean_payload(self.evaluate_value(self.request.Payload or '{}')),
+                    payload=payload,
                     expects_status_code=self.response.Status_code,
-                    contains=self._clean_response(self.evaluate_value(self.response.Body)),
-                    headers=self.config.headers
+                    contains=body,
+                    headers={
+                        key: f'[{",".join(value)}]' if isinstance(value, list) else str(value)
+                        for key, value in {**self.config.headers, **self.request.Headers}.items()
+                    }
                 )
             }
         ))
@@ -98,6 +128,9 @@ class TestFileWriter(BaseModel, EvaluationMixin):
         url = urllib.parse.urlparse(self.request.Path)
         if url.path in self.config.skip and self.request.Method.upper() in self.config.skip[url.path]:
             return
+        for path in self.config.skip_files:
+            if path in url.path:
+                return
         config = self._build_config()
 
         with open(self.target_file, 'w') as file:

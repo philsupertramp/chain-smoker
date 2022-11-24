@@ -526,6 +526,12 @@ skip:
   # endpoint: list of methods
   /post/: ['POST']
 
+# skip any request to a path that contains a key defined here
+skip_files:
+  - /some/file.js
+  - /some/path
+  - .filending
+
 # overwrite headers to send with requests
 headers:
   Authorization: Basic FOOBAR
@@ -536,4 +542,59 @@ requests:
     get:  # method
       ignore_response: # allows to skip parts of the response
         - headers # key in response body
+      payload: # rewrite request payload
+        key: value
+      keep: # regex search to keep page content
+        - some_regex # e.g. get content from all h1 tags <h1[^>]?>(\w+)?<\/h1[^>]?>
+```
+
+### Some use case examples:
+**Skip all login requests**
+```yaml
+skip:
+  /login/: ['POST']
+```
+**Skip all requests**
+```yaml
+skip_files:
+  - /
+```
+**Skip all static file requests**
+```yaml
+skip_files:
+  - '.js'
+  - '.css'
+  - 'manifest.json'
+```
+**Overwrite request authentication header**
+```yaml
+headers:
+  Authentication: MYTOKEN
+```
+**Search for h1 tags in HTML response**
+```yaml
+requests:
+  /get/:
+    get:
+      keep:
+        - <h1[^>]?>(\w+)?<\/h1[^>]?>
+```
+
+**Rewrite payloads**
+```yaml
+requests:
+  /login/:
+    post:
+      payload:
+        username: foo
+        password: bar
+```
+
+**Ignore secrets in response**
+```yaml
+requests:
+  /login/:
+    post:
+      ignore_response:
+        - token
 ```

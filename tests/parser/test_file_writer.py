@@ -23,7 +23,25 @@ class FileWriterTestCase(TestCase):
                 'Status_code': 200, 'Body': {'foo': 1, 'bar': 'xxxxxx'}, 'Headers': {},
             }
         }
-        cls.sample_post_request = {
+        cls.html_sample_request = {
+            'Request': {
+                'Method': 'get', 'Path': 'https://example.com/get/', 'Payload': {},
+                'Protocol': 'HTTP/1', 'Headers': {},
+            },
+            'Response': {
+                'Status_code': 200, 'Body': '<html><h1>Hello World!</h1></html>', 'Headers': {},
+            }
+        }
+        cls.zipped_html_sample_request = {
+            'Request': {
+                'Method': 'get', 'Path': 'https://example.com/get/', 'Payload': {},
+                'Protocol': 'HTTP/1', 'Headers': {'Accept-Encoding': ['gzip', 'deflate', 'br']},
+            },
+            'Response': {
+                'Status_code': 200, 'Body': '\x1F\uFFFD\b\0\0\0\0\0', 'Headers': {},
+            }
+        }
+        cls.post_sample_request = {
             'Request': {
                 'Method': 'post', 'Path': 'https://example.com/post/', 'Payload': {'foo': 1, 'bar': 'xxxxxx'},
                 'Protocol': 'HTTP/1', 'Headers': {},
@@ -77,7 +95,7 @@ class FileWriterTestCase(TestCase):
 
         self.assertEqual(method.endpoint, '/get/')
         self.assertEqual(method.method, 'get')
-        self.assertEqual(method.payload, {})
+        self.assertEqual(method.payload, '')
         self.assertEqual(method.expects_status_code.value, 200)
         self.assertEqual(method.client.base_url, 'https://example.com')
 
@@ -101,6 +119,32 @@ class FileWriterTestCase(TestCase):
             writer.config.skip = {}
             writer.write()
             self.assertTrue(os.path.exists(tmpfilepath))
+            os.remove(tmpfilepath)
+
+            # fixed path
+            writer.config.skip_files = ['/styles.css']
+            writer.request.Path = '/styles.css'
+            writer.write()
+            self.assertFalse(os.path.exists(tmpfilepath))
+
+            # file ending wild card
+            writer.config.skip_files = ['.css']
+            writer.request.Path = '/styles.css'
+            writer.write()
+            self.assertFalse(os.path.exists(tmpfilepath))
+
+            # sub-page wild card
+            writer.config.skip_files = ['/hidden/']
+            writer.request.Path = '/hidden/styles.css'
+            writer.write()
+            self.assertFalse(os.path.exists(tmpfilepath))
+
+            # wild card mismatch
+            writer.config.skip_files = ['/hidden/']
+            writer.request.Path = '/styles.css'
+            writer.write()
+            self.assertTrue(os.path.exists(tmpfilepath))
+            os.remove(tmpfilepath)
 
     @mock.patch('src.chain_smoker.api_client.APIClient.get')
     def test_can_use_built_config(self, get_mock):
@@ -119,6 +163,27 @@ class FileWriterTestCase(TestCase):
 
             # test runs successful
             self.assertIsNotNone(test_method.run())
+
+    @parameterized.expand([
+        ('html_sample_request',),
+        ('zipped_html_sample_request',),
+    ])
+    @mock.patch('src.chain_smoker.api_client.APIClient.get')
+    def test_can_use_built_config_html(self, request_name, get_mock):
+        sample_request = getattr(self, request_name)
+        get_mock.return_value = mock.Mock(
+            json=mock.Mock(return_value={'foo': 1, 'bar': 'xxxxxx'}),
+            status_code=200
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # you can e.g. create a file here:
+            temp_file_path = os.path.join(temp_dir, 'someFile.yaml')
+            writer = TestFileWriter(sample_request, temp_file_path)
+
+            config = writer._build_config()
+            test_method = config['tests'][0]
+
+            self.assertIsInstance(test_method.get('contains'), str)
 
     @parameterized.expand([
         ({'/get/': {'get': {'ignore_response': ['bar']}}}, {'foo': 1}),
@@ -157,13 +222,54 @@ class FileWriterTestCase(TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             # you can e.g. create a file here:
             temp_file_path = os.path.join(temp_dir, 'someFile.yaml')
-            writer = TestFileWriter(self.sample_post_request, temp_file_path)
+            writer = TestFileWriter(self.post_sample_request, temp_file_path)
 
             writer.config.requests = request_config
             config = writer._build_config()
             test = config.get('tests')[0]
 
             self.assertDictEqual(test.get('payload'), expected_response, test)
+
+    @parameterized.expand([
+        ({}, 'ignore_response', False, False, {}),
+        ({'foo': 'bar'}, 'ignore_response', False, False, {}),
+        ({'foo': 'bar', 'bar': 'baz'}, 'ignore_response', False, False, {'bar': 'baz'}),
+        ({}, 'payload', True, False, {}),
+        ({'foo': 1, 'bar': 'baz'}, 'payload', True, False, {'foo': 'bar', 'bar': 'baz'}),
+        ('<html><h2>Sub-Title</h2></html>', 'keep', False, True, []),
+        ('<html><h1>Title</h1></br><h2>Sub-Title</h2></html>', 'keep', False, True, ['Title']),
+        (
+            '<html><h1>Title</h1></br><h2>Sub-Title</h2><h1>Heading</h1></html>',
+            'keep',
+            False,
+            True,
+            ['Title', 'Heading']
+        ),
+    ])
+    def test_clean_dict(self, dict_value, conf_key, replace, regex_replace, expected_value):
+        writer = TestFileWriter(self.sample_request, 'foo.yaml')
+        writer.config = RewriteConfig(
+            skip={},
+            skip_files=[],
+            requests={
+                '/get/': {
+                    'get': {
+                        'ignore_response': ['foo'],
+                        'payload': {
+                            'foo': 'bar'
+                        },
+                        'keep': [r'<h1[^>]?>(\w+)?<\/h1[^>]?>'],
+                    }
+                }
+            },
+            headers={}
+        )
+        if isinstance(dict_value, str):
+            method = self.assertEqual
+        else:
+            method = self.assertDictEqual
+
+        method(writer._clean_dict(dict_value, conf_key, replace, regex_replace), expected_value)
 
 
 class RewriteConfigTestCase(TestCase):
@@ -174,11 +280,12 @@ class RewriteConfigTestCase(TestCase):
             'skip': {},
             'request': {},
             'headers': {},
+            'skip_files': []
         }
 
     def test_from_file_unknown_file(self):
         config = RewriteConfig.from_file('foo')
-        self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}})
+        self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
 
     def test_from_file_known_invalid_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -188,4 +295,4 @@ class RewriteConfigTestCase(TestCase):
                 yaml.dump(self.sample_config, file)
 
             config = RewriteConfig.from_file(temp_file_path)
-            self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}})
+            self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
