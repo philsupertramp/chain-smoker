@@ -32,13 +32,15 @@ class FileWriterTestCase(TestCase):
                 'Status_code': 200, 'Body': '<html><h1>Hello World!</h1></html>', 'Headers': {},
             }
         }
+        with open(os.path.join(os.path.dirname(__file__), './fixtures/gzipped-response.html'), 'br') as f:
+            zipped_body = f.read()
         cls.zipped_html_sample_request = {
             'Request': {
                 'Method': 'get', 'Path': 'https://example.com/get/', 'Payload': {},
                 'Protocol': 'HTTP/1', 'Headers': {'Accept-Encoding': ['gzip', 'deflate', 'br']},
             },
             'Response': {
-                'Status_code': 200, 'Body': '\x1F\uFFFD\b\0\0\0\0\0', 'Headers': {},
+                'Status_code': 200, 'Body': zipped_body, 'Headers': {},
             }
         }
         cls.post_sample_request = {
@@ -168,22 +170,26 @@ class FileWriterTestCase(TestCase):
         ('html_sample_request',),
         ('zipped_html_sample_request',),
     ])
-    @mock.patch('src.chain_smoker.api_client.APIClient.get')
-    def test_can_use_built_config_html(self, request_name, get_mock):
+    def test_can_use_built_config_html(self, request_name):
         sample_request = getattr(self, request_name)
-        get_mock.return_value = mock.Mock(
-            json=mock.Mock(return_value={'foo': 1, 'bar': 'xxxxxx'}),
-            status_code=200
-        )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # you can e.g. create a file here:
-            temp_file_path = os.path.join(temp_dir, 'someFile.yaml')
-            writer = TestFileWriter(sample_request, temp_file_path)
+        temp_file_path = 'someFile.yaml'
+        writer = TestFileWriter(sample_request, temp_file_path)
 
-            config = writer._build_config()
-            test_method = config['tests'][0]
+        config = writer._build_config()
+        test_method = config['tests'][0]
 
-            self.assertIsInstance(test_method.get('contains'), str)
+        self.assertIsInstance(test_method.get('contains'), str)
+
+    def test_unpacking_gzipped_response(self):
+        with open(os.path.join(os.path.dirname(__file__), './fixtures/unpacked-response.html'), 'r') as f:
+            zipped_body = f.read()
+        temp_file_path = 'someFile.yaml'
+        writer = TestFileWriter(self.zipped_html_sample_request, temp_file_path)
+
+        config = writer._build_config()
+        test_method = config['tests'][0]
+
+        self.assertEqual(test_method.get('contains'), zipped_body)
 
     @parameterized.expand([
         ({'/get/': {'get': {'ignore_response': ['bar']}}}, {'foo': 1}),

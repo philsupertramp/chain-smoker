@@ -21,3 +21,8 @@ repos:
     rev: 4.0.1
     hooks:
         - id: flake8
+exclude: |
+        (?x)^(
+            tests/parser/fixtures/unpacked-response.html|
+            tests/parser/fixtures/gzipped-response.html|
+        )$

@@ -1,3 +1,4 @@
+import gzip
 import os
 import re
 import urllib.parse
@@ -34,9 +35,6 @@ class RewriteConfig(BaseModel):
 
     def apply(self, request, obj, conf_key, replace=False, regex_replace=False):
         url = urllib.parse.urlparse(request.Path)
-        print(url.path)
-        print(request.Method.lower())
-        print(self.requests)
         if url.path in self.requests:
             conf = self.requests[url.path]
             if request.Method.lower() in conf:
@@ -94,6 +92,8 @@ class TestFileWriter(BaseModel, EvaluationMixin):
     def _build_body(self):
         if 'zip' in self.request.Headers.get('Accept-Encoding', [''])[0]:
             body = self.response.Body
+            body = str(gzip.decompress(body), 'utf-8')
+
         elif isinstance(self.response.Body, str) and '<html' in self.response.Body.lower():
             body = self._clean_response(self.response.Body)
         else:
