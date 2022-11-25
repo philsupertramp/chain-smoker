@@ -230,47 +230,6 @@ class FileWriterTestCase(TestCase):
 
             self.assertDictEqual(test.get('payload'), expected_response, test)
 
-    @parameterized.expand([
-        ({}, 'ignore_response', False, False, {}),
-        ({'foo': 'bar'}, 'ignore_response', False, False, {}),
-        ({'foo': 'bar', 'bar': 'baz'}, 'ignore_response', False, False, {'bar': 'baz'}),
-        ({}, 'payload', True, False, {}),
-        ({'foo': 1, 'bar': 'baz'}, 'payload', True, False, {'foo': 'bar', 'bar': 'baz'}),
-        ('<html><h2>Sub-Title</h2></html>', 'keep', False, True, []),
-        ('<html><h1>Title</h1></br><h2>Sub-Title</h2></html>', 'keep', False, True, ['Title']),
-        (
-            '<html><h1>Title</h1></br><h2>Sub-Title</h2><h1>Heading</h1></html>',
-            'keep',
-            False,
-            True,
-            ['Title', 'Heading']
-        ),
-    ])
-    def test_clean_dict(self, dict_value, conf_key, replace, regex_replace, expected_value):
-        writer = TestFileWriter(self.sample_request, 'foo.yaml')
-        writer.config = RewriteConfig(
-            skip={},
-            skip_files=[],
-            requests={
-                '/get/': {
-                    'get': {
-                        'ignore_response': ['foo'],
-                        'payload': {
-                            'foo': 'bar'
-                        },
-                        'keep': [r'<h1[^>]?>(\w+)?<\/h1[^>]?>'],
-                    }
-                }
-            },
-            headers={}
-        )
-        if isinstance(dict_value, str):
-            method = self.assertEqual
-        else:
-            method = self.assertDictEqual
-
-        method(writer._clean_dict(dict_value, conf_key, replace, regex_replace), expected_value)
-
 
 class RewriteConfigTestCase(TestCase):
     @classmethod
@@ -296,3 +255,69 @@ class RewriteConfigTestCase(TestCase):
 
             config = RewriteConfig.from_file(temp_file_path)
             self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
+
+    @parameterized.expand([
+        ({}, 'ignore_response', False, False, {}),
+        ({'foo': 'bar'}, 'ignore_response', False, False, {}),
+        ({'foo': 'bar', 'bar': 'baz'}, 'ignore_response', False, False, {'bar': 'baz'}),
+        ({}, 'payload', True, False, {}),
+        ({'foo': 1, 'bar': 'baz'}, 'payload', True, False, {'foo': 'bar', 'bar': 'baz'}),
+        ('<html><h2>Sub-Title</h2></html>', 'keep', False, True, []),
+        ('<html><h1>Title</h1></br><h2>Sub-Title</h2></html>', 'keep', False, True, ['Title']),
+        (
+            '<html><h1>Title</h1></br><h2>Sub-Title</h2><h1>Heading</h1></html>',
+            'keep',
+            False,
+            True,
+            ['Title', 'Heading']
+        ),
+    ])
+    def test_apply(self, dict_value, conf_key, replace, regex_replace, expected_value):
+        config_dict = dict(
+            skip={},
+            skip_files=[],
+            requests={
+                '/get/': {
+                    'get': {
+                        'ignore_response': ['foo'],
+                        'payload': {
+                            'foo': 'bar'
+                        },
+                        'keep': [r'<h1[^>]?>(\w+)?<\/h1[^>]?>'],
+                    }
+                }
+            },
+            headers={}
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_config_file_path = os.path.join(temp_dir, 'someConfigFile.yaml')
+            temp_file_path = os.path.join(temp_dir, 'someFile.yaml')
+
+            with open(temp_config_file_path, 'w') as file:
+                yaml.dump(config_dict, file)
+
+            writer = TestFileWriter({
+                'Request': {
+                    'Method': 'get', 'Path': 'https://example.com/get/', 'Payload': {},
+                    'Protocol': 'HTTP/1', 'Headers': {},
+                },
+                'Response': {
+                    'Status_code': 200, 'Body': {'foo': 1, 'bar': 'xxxxxx'}, 'Headers': {},
+                }
+            }, temp_file_path, temp_config_file_path)
+            config = writer.config
+        if isinstance(dict_value, str):
+            method = self.assertEqual
+        else:
+            method = self.assertDictEqual
+
+        method(
+            config.apply(
+                request=writer.request,
+                obj=dict_value,
+                conf_key=conf_key,
+                replace=replace,
+                regex_replace=regex_replace
+            ),
+            expected_value)

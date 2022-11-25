@@ -32,27 +32,15 @@ class RewriteConfig(BaseModel):
 
         return cls(**content)
 
-
-class TestFileWriter(BaseModel, EvaluationMixin):
-    request: Request = Field()
-    response: Response = Field()
-    target_file: str = Field()
-    config: Optional[RewriteConfig] = Field()
-
-    def __init__(self, request_dict, target_file: str, config_file: Optional[str] = None):
-        super().__init__(
-            request=Request(**request_dict.get('Request', {})),
-            response=Response(**request_dict.get('Response', {})),
-            target_file=target_file,
-            config=RewriteConfig.from_file(config_file)
-        )
-
-    def _clean_dict(self, obj, conf_key, replace=False, regex_replace=False):
-        url = urllib.parse.urlparse(self.request.Path)
-        if url.path in self.config.requests:
-            conf = self.config.requests[url.path]
-            if self.request.Method.lower() in conf:
-                conf = conf[self.request.Method.lower()]
+    def apply(self, request, obj, conf_key, replace=False, regex_replace=False):
+        url = urllib.parse.urlparse(request.Path)
+        print(url.path)
+        print(request.Method.lower())
+        print(self.requests)
+        if url.path in self.requests:
+            conf = self.requests[url.path]
+            if request.Method.lower() in conf:
+                conf = conf[request.Method.lower()]
                 if conf.get(conf_key):
                     if replace:
                         for key, value in conf.get(conf_key, {}).items():
@@ -71,12 +59,31 @@ class TestFileWriter(BaseModel, EvaluationMixin):
                                 del obj[key]
         return obj
 
+
+class TestFileWriter(BaseModel, EvaluationMixin):
+    request: Request = Field()
+    response: Response = Field()
+    target_file: str = Field()
+    config: Optional[RewriteConfig] = Field()
+
+    def __init__(self, request_dict, target_file: str, config_file: Optional[str] = None):
+        super().__init__(
+            request=Request(**request_dict.get('Request', {})),
+            response=Response(**request_dict.get('Response', {})),
+            target_file=target_file,
+            config=RewriteConfig.from_file(config_file)
+        )
+
     def _clean_response(self, response):
-        response = self._clean_dict(response, 'ignore_response')
-        return self._clean_dict(response, 'keep', regex_replace=True)
+        return self.config.apply(
+            self.request,
+            self.config.apply(self.request, response, 'ignore_response'),
+            'keep',
+            regex_replace=True
+        )
 
     def _clean_payload(self, payload):
-        return self._clean_dict(payload, 'payload', replace=True)
+        return self.config.apply(self.request, payload, 'payload', replace=True)
 
     def _build_payload(self):
         payload = ''
