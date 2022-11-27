@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 from unittest import TestCase, mock
@@ -182,14 +183,27 @@ class FileWriterTestCase(TestCase):
 
     def test_unpacking_gzipped_response(self):
         with open(os.path.join(os.path.dirname(__file__), './fixtures/unpacked-response.html'), 'r') as f:
-            zipped_body = f.read()
+            unzipped_body = f.read()
         temp_file_path = 'someFile.yaml'
         writer = TestFileWriter(self.zipped_html_sample_request, temp_file_path)
 
         config = writer._build_config()
         test_method = config['tests'][0]
 
-        self.assertEqual(test_method.get('contains'), zipped_body)
+        self.assertEqual(test_method.get('contains'), unzipped_body)
+
+    def test_reading_gzipped_request(self):
+        with open(os.path.join(os.path.dirname(__file__), './fixtures/sample.json'), 'r') as f:
+            sample_request = json.load(f)
+        with open(os.path.join(os.path.dirname(__file__), './fixtures/sample.html'), 'r') as f:
+            sample_body = f.read()
+
+        writer = TestFileWriter(sample_request, 'someFile.yaml')
+
+        config = writer._build_config()
+        test_method = config['tests'][0]
+
+        self.assertEqual(test_method.get('contains'), sample_body)
 
     @parameterized.expand([
         ({'/get/': {'get': {'ignore_response': ['bar']}}}, {'foo': 1}),

@@ -24,7 +24,7 @@ type ProxyHandler struct {
 
 type ResponseLog struct {
   Status_code int
-  Body string
+  Body []byte
   Headers map[string][]string
   // cookies
 }
@@ -48,7 +48,7 @@ type RecordLog struct {
 func dump_response(resp *http.Response, body []byte) {
   req := &RecordLog{
     RequestLog{string(current_payload), resp.Request.Proto, resp.Request.URL.String(), resp.Request.Method, resp.Request.Header},
-    ResponseLog{resp.StatusCode, string(body), resp.Header},
+    ResponseLog{resp.StatusCode, body, resp.Header},
   }
   current_payload = make([]byte, 0)
   log_obj, err := json.Marshal(req)

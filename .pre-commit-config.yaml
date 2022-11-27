@@ -25,4 +25,6 @@ exclude: |
         (?x)^(
             tests/parser/fixtures/unpacked-response.html|
             tests/parser/fixtures/gzipped-response.html|
+            tests/parser/fixtures/sample.html|
+            tests/parser/fixtures/sample.json|
         )$

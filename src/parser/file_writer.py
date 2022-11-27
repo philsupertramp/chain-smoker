@@ -1,3 +1,4 @@
+import base64
 import gzip
 import os
 import re
@@ -9,6 +10,13 @@ from pydantic import BaseModel, Field
 
 from src.chain_smoker.config import TestCaseConfig, ConfigType, Response, Request
 from src.chain_smoker.mixins import EvaluationMixin
+
+
+def is_base64(s):
+    try:
+        return base64.b64encode(base64.b64decode(s)) == s.encode()
+    except Exception:
+        return False
 
 
 class RewriteConfig(BaseModel):
@@ -90,14 +98,18 @@ class TestFileWriter(BaseModel, EvaluationMixin):
         return payload
 
     def _build_body(self):
-        if 'zip' in self.request.Headers.get('Accept-Encoding', [''])[0]:
-            body = self.response.Body
-            body = str(gzip.decompress(body), 'utf-8')
-
-        elif isinstance(self.response.Body, str) and '<html' in self.response.Body.lower():
-            body = self._clean_response(self.response.Body)
+        if is_base64(self.response.Body):
+            with open('./parsed_examples/body.foo', 'w') as f:
+                f.write(self.response.Body)
+            body = base64.b64decode(self.response.Body)
         else:
-            body = self._clean_response(self.evaluate_value(self.response.Body))
+            body = self.response.Body
+        if 'zip' in self.request.Headers.get('Accept-Encoding', [''])[0]:
+            body = str(gzip.decompress(body), 'utf-8')
+        elif isinstance(body, str) and '<html' in body.lower():
+            body = self._clean_response(body)
+        else:
+            body = self._clean_response(self.evaluate_value(body))
         return body
 
     def _build_config(self):

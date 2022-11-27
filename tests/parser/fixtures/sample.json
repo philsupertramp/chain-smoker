@@ -1,0 +1,106 @@
+{
+  "Request": {
+    "Payload": "",
+    "Protocol": "HTTP/1.1",
+    "Path": "https://app.dev.moberries.com/",
+    "Method": "GET",
+    "Headers": {
+      "Accept": [
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
+      ],
+      "Accept-Encoding": [
+        "gzip, deflate, br"
+      ],
+      "Accept-Language": [
+        "en-GB,en-US;q=0.9,en;q=0.8"
+      ],
+      "Cache-Control": [
+        "max-age=0"
+      ],
+      "Cookie": [
+        "csrftoken=68lWSk47ndgO2WH5TBv5669Ertwf6UCO67XeWQoVize0nlpEuSFpFAULhBW3fTPk"
+      ],
+      "Sec-Ch-Ua": [
+        "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"100\""
+      ],
+      "Sec-Ch-Ua-Mobile": [
+        "?0"
+      ],
+      "Sec-Ch-Ua-Platform": [
+        "\"Linux\""
+      ],
+      "Sec-Fetch-Dest": [
+        "document"
+      ],
+      "Sec-Fetch-Mode": [
+        "navigate"
+      ],
+      "Sec-Fetch-Site": [
+        "none"
+      ],
+      "Sec-Fetch-User": [
+        "?1"
+      ],
+      "Upgrade-Insecure-Requests": [
+        "1"
+      ],
+      "User-Agent": [
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36"
+      ],
+      "X-Forwarded-For": [
+        "172.17.0.1"
+      ]
+    }
+  },
+  "Response": {
+    "Status_code": 200,
+    "Body": "H4sIAMIVqF0AA31UTXPbIBC9+1ds1UsyIyQnaRqPLWn6mWkPaQ9pDz0SsbKYCFAByfZ08t+7Qo4jN5makYFdeLvvsZC9Eqb0uxah9qopZtljh1wUM6Bf5qVvsPi85aptED4ZxaXO0tE6G5co9BzKmluHPo86X7FFBGkxcdbetwx/d7LPo49Ge9SeDWEjKMdZHnnc+nQIvzpAvYSkucI86iVuWmP9ZP9GCl/nAntZIguTGKSWXvKGuZI3mJ89QTm/IzJDBvvApXPR6LszYgd/wjBMeXm/tqbTgpWmMXYJr6s5tfPVYYnidi31EuZPppYLIfX6yFZRpqziSja7JTDekpzM7ZxHFcPYs07G8KGR+v6Gl7fBdE2bYohucW0Qfn6NaPy9RQ23XLth8gWbHr0sOXzDDslyMMTw3hJ3wqalzKGV1VMuYfAQ/oXsJ3SDcEt4O5+32+cML1EB77x5geg5qtV/RRPUJhncGSvQMsuF7BzplFweAZgtczUXZkPI7RYu6Luibxjb9R0/mcehJfPz09WEDF8O6sXU99JJj2JC7TGTi8WbxWKSyXD+TGBpLPfSEEttNE5B3ykUksOJ4lu21+dq0Od0An6s4lFV/KPYROVjx8MkZJaGCi3CWWXpeB1n2VCbdDsp2L6O67NnN5NMo68tftTSgQh2oFFlLHQOYZg1Tef8QLhHwBHBDQ56DjpF98kl8Mt0RGIXtnhCGqtlj6ahIXkJoLNIdHxtOg+tlRSiNHS0Ugcxgebc3VOFhOgtWiWdI0eSpe0hz4weCItVHg3PhFum6WazSSTXPDF2nY4hXbpPMypujB1IEKAKQZKE0HgRELM0iJOle6nS8UH7CyjrfG/oBAAA",
+    "Headers": {
+      "Age": [
+        "44"
+      ],
+      "Cache-Control": [
+        "max-age=0,no-cache,no-store,must-revalidate"
+      ],
+      "Content-Encoding": [
+        "gzip"
+      ],
+      "Content-Security-Policy": [
+        "frame-ancestors 'none'"
+      ],
+      "Content-Type": [
+        "text/html"
+      ],
+      "Date": [
+        "Sun, 27 Nov 2022 10:43:33 GMT"
+      ],
+      "Etag": [
+        "W/\"4c67adbf38a2a0d0d5c03fb3ff080a4a\""
+      ],
+      "Last-Modified": [
+        "Fri, 25 Nov 2022 13:10:44 GMT"
+      ],
+      "Server": [
+        "AmazonS3"
+      ],
+      "Vary": [
+        "Accept-Encoding"
+      ],
+      "Via": [
+        "1.1 da38961a461b7c877fd77dd3469eb304.cloudfront.net (CloudFront)"
+      ],
+      "X-Amz-Cf-Id": [
+        "akwPVpx0UYpZPGI-WwUqBKjw_vy0iebhrOYVy_M8IvD8l8uO-B7GiA=="
+      ],
+      "X-Amz-Cf-Pop": [
+        "TXL50-P3"
+      ],
+      "X-Cache": [
+        "Hit from cloudfront"
+      ],
+      "X-Frame-Options": [
+        "DENY"
+      ]
+    }
+  }
+}
