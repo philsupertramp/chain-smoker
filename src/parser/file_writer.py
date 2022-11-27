@@ -99,8 +99,6 @@ class TestFileWriter(BaseModel, EvaluationMixin):
 
     def _build_body(self):
         if is_base64(self.response.Body):
-            with open('./parsed_examples/body.foo', 'w') as f:
-                f.write(self.response.Body)
             body = base64.b64decode(self.response.Body)
         else:
             body = self.response.Body
