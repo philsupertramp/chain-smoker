@@ -104,7 +104,7 @@ class TestFileWriter(BaseModel, EvaluationMixin):
             body = self.response.Body
         if 'zip' in self.request.Headers.get('Accept-Encoding', [''])[0]:
             body = str(gzip.decompress(body), 'utf-8')
-        elif isinstance(body, str) and '<html' in body.lower():
+        if isinstance(body, str) and '<html' in body.lower():
             body = self._clean_response(body)
         else:
             body = self._clean_response(self.evaluate_value(body))

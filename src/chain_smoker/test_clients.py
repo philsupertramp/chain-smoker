@@ -87,7 +87,7 @@ class SmokeTest(EvaluationMixin):
         try:
             return res.json()
         except ValueError:
-            return res.text.replace('\n', '').replace('   ', ' ').replace('  ', ' ')
+            return res.content.decode('utf-8')
 
     def run(self, *args, **kwargs) -> Optional[TestValueType]:
 
