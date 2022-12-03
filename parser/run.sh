@@ -2,14 +2,6 @@
 
 set -e
 
-HOSTNAME=$1
-HOSTNAME=${HOSTNAME:-https://postman-echo.com}
-RUN_PARSER=${RUN_PARSER:-true}
-OUTPUT_DIR=$2
-OUTPUT_DIR=${OUTPUT_DIR:-parsed_examples}
-OUTPUT_PREFIX=$3
-OUTPUT_PREFIX=${OUTPUT_PREFIX:-example}
-
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 
@@ -27,9 +19,26 @@ function ensure_pipe() {
   mkfifo "${pipe}"
 }
 
+
+HOSTNAME="https://postman-echo.com"
+PORT=8080
+OUTPUT_DIR=parsed_examples
+OUTPUT_PREFIX=example
+
+while getopts h:p:o:f: flag
+do
+    case "${flag}" in
+        h) HOSTNAME=${OPTARG};;
+        p) PORT=${OPTARG};;
+        o) OUTPUT_DIR=${OPTARG};;
+        f) OUTPUT_PREFIX=${OPTARG};;
+        a*) ;;
+    esac
+done
+
 ensure_pipe parser_buffer
 
-./parser/proxy/build/proxy --host="${HOSTNAME}" > parser_buffer &
+./parser/proxy/build/proxy --host="${HOSTNAME}" --port="${PORT}" > parser_buffer &
 
 PROXY_PID=$!
 

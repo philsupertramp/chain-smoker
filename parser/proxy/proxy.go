@@ -11,6 +11,7 @@ import (
   "net/http"
   "net/http/httputil"
   "time"
+  "strconv"
   "fmt"
 )
 
@@ -102,11 +103,11 @@ func (ph *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func main() {
 
   host_ptr := flag.String("host", "https://example.com", "The host to forward to.")
+  proxy_port := flag.Int("port", 8080, "The port to listen on.")
   flag.Parse()
 
-  new_host = *host_ptr
   mux := http.NewServeMux()
-  remote, err := url.Parse(new_host)
+  remote, err := url.Parse(*host_ptr)
   if err != nil {
     panic(err)
   }
@@ -115,7 +116,7 @@ func main() {
   proxy.ModifyResponse = parse_response
   mux.Handle("/", &ProxyHandler{proxy})
   server := &http.Server{
-    Addr:       ":8080",
+    Addr:       ":"+strconv.Itoa(*proxy_port),
     Handler:    mux,
     ReadTimeout: 10 * time.Second,
     WriteTimeout: 10 * time.Second,

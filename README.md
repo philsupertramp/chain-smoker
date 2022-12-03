@@ -87,6 +87,13 @@ To verify your set-up is working correctly, run
 [2022-09-14 13:37:42,420] INFO - Success for patch!
 [2022-09-14 13:37:42,539] INFO - Success for put!
 ```
+#### Parser
+To use the parser, you need to build the executable using
+```shell
+go build -o ./parser/proxy/build/parser ./parser/proxy/proxy.go
+```
+Or download the latest version of the binaries from [github](https://github.com/philsupertramp/chain-smoker/releases?q=proxy&expanded=true).
+
 ### Docker
 #### Online Repositories
 To get the most recent stable version (`latest`) of the tools, consult the [docker-hub](https://hub.docker.com/search?q=philsupertramp%2Fchain-smoker).
