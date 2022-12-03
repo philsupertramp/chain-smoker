@@ -23,5 +23,5 @@ jobs:
         goos: linux
         goarch: amd64
         project_path: parser/proxy
-        binary_name: proxy
-        release_tag: proxy-${{ steps.date.outputs.date }}
+        binary_name: proxy-${{ steps.date.outputs.date }}
+        release_tag: proxy
