@@ -16,7 +16,7 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Go Release Binaries
-      uses: wangyoucao577/go-release-action@v1.33
+      uses: wangyoucao577/go-release-action@v1.34
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: linux
