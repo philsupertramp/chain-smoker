@@ -1,6 +1,3 @@
-*
-
-!examples/*
-!src/*
-!main.py
-!requirements.txt
+.venv/
+.github/
+.git/

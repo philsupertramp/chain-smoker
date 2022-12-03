@@ -1,8 +1,11 @@
 import datetime
+from functools import partial
+from operator import ne, eq
 from typing import Union, Dict, List
 
 from requests import Response
 from requests.cookies import RequestsCookieJar
+from requests.structures import CaseInsensitiveDict
 
 from .config import Cookie
 from .logger import logger
@@ -17,13 +20,15 @@ class ValueTest:
     def __init__(self, value: TestValueType, name: str, method: str, inverse=False):
         self.value = value
         self.inverse = inverse
+        op = eq if self.inverse else ne
+        self.value_test = partial(op, value)
         self.name = name
         self.method = method
 
     def _run_test(self, other_value: TestValueType) -> None:
         raise NotImplementedError()
 
-    def test(self, other_value: Union[Dict, str, int, Response, RequestsCookieJar]) -> bool:
+    def test(self, other_value: Union[Dict, str, int, Response, RequestsCookieJar, CaseInsensitiveDict]) -> bool:
         self.error = ''
         self.found_error = False
         self._run_test(other_value)
@@ -52,14 +57,24 @@ class ValueTest:
             return True
         return False
 
+    def _test_attr(self, attr, expected, received):
+        exp_attr = getattr(expected, attr, None)
+        rec_attr = getattr(received, attr, None)
+        if exp_attr is not None and exp_attr != rec_attr:
+            self.error = 'Unexpected result for ' \
+                         f'{self.name}!\n{attr.title()}: ' \
+                         f'{getattr(received, attr, None)}!={getattr(expected, attr, None)}\n' \
+                         f'{self.method}'
+            self.found_error = True
+            return
+
 
 class ExpectedTest(ValueTest):
     """
     Equal comparison of objects
     """
     def _run_test(self, other_value: TestValueType) -> None:
-        op = '__eq__' if self.inverse else '__ne__'
-        if getattr(other_value, op)(self.value):
+        if self.value_test(other_value):
             self.error = f'Unexpected result for {self.name}!\n{other_value}\n'
             self.error += '==' if self.inverse else '!='
             self.error += f'\n{self.value}\n{self.method}'
@@ -71,8 +86,7 @@ class ExpectedStatusCodeTest(ValueTest):
     Equal comparison of objects
     """
     def _run_test(self, other_value: Response) -> None:
-        op = '__eq__' if self.inverse else '__ne__'
-        if getattr(other_value.status_code, op)(self.value):
+        if self.value_test(other_value.status_code):
             self.error = f'Unexpected status_code for {self.name}!\n{other_value.status_code}\n'
             self.error += '==' if self.inverse else '!='
             self.error += f'\n{self.value}\n{self.method}'
@@ -86,17 +100,24 @@ class ContainsTest(ValueTest):
     - string/integer: Expected value part of received value (Expected IN Received)
     - dictionary: Expected (key, value)-pairs are within received values
     """
-    def _run_test(self, other_value: TestValueType) -> None:
-        if isinstance(self.value, (str, int)):
-            if self._test_value(self.value, other_value):
-                return
-        elif isinstance(self.value, dict):
-            if self._test_dict(self.value, other_value):
-                return
+    def _run_test_for_value(self, value_in, other_value: TestValueType) -> bool:
+        if isinstance(value_in, (str, int)):
+            if self._test_value(value_in, other_value):
+                return True
+        elif isinstance(value_in, dict):
+            if self._test_dict(value_in, other_value):
+                return True
+        elif isinstance(value_in, list):
+            if self._test_list(value_in, other_value):
+                return True
         else:
             raise NotImplementedError()
+        return False
 
-    def _test_list(self, value_in, other_value) -> bool:
+    def _run_test(self, other_value: TestValueType) -> None:
+        self._run_test_for_value(self.value, other_value)
+
+    def _test_response_list(self, value_in, other_value) -> bool:
         errors = []
         for elem in other_value:
             self.found_error = self._test_dict(value_in, elem)
@@ -108,9 +129,23 @@ class ContainsTest(ValueTest):
         self.found_error = len(self.error) > 0
         return self.found_error
 
+    def _test_list(self, value_in, other_value) -> bool:
+        val = False
+        errors = []
+        for value in value_in:
+            new_val = self._run_test_for_value(value, other_value)
+            val |= new_val
+            if new_val:
+                self.found_error = True
+                error = f'Unexpected for {self.name}!\n'
+                error += f'Didn\'t find key "{value}" in {other_value}'
+                errors.append(error)
+        self.error = '\n'.join(errors)
+        return val
+
     def _test_dict(self, value_in, other_value) -> bool:
         if isinstance(other_value, list):
-            return self._test_list(value_in, other_value)
+            return self._test_response_list(value_in, other_value)
 
         for key, value in value_in.items():
             if isinstance(value, dict):
@@ -142,7 +177,7 @@ class ContainsCookiesTest(ValueTest):
         if cookie.max_age.lower() == 'session':
             return 'session'
         try:
-            max_age = datetime.datetime.strptime(cookie.max_age, "%Y-%m-%dT%H:%M:%S%z").timestamp()
+            max_age = datetime.datetime.strptime(cookie.max_age, '%Y-%m-%dT%H:%M:%S%z').timestamp()
         except ValueError:
             if cookie.max_age[-1] == 'm':
                 max_age = datetime.datetime.now() + datetime.timedelta(minutes=int(cookie.max_age[:-1]))
@@ -162,6 +197,29 @@ class ContainsCookiesTest(ValueTest):
         else:
             self._run_positive_test(other_value)
 
+    def _test_cookie_age(self, cookie, response_cookie):
+        max_age = self._get_max_age(cookie)
+        if max_age == 'session':
+            if response_cookie.expires is None:
+                return True
+            self.error = f'Unexpected result for {self.name}!\n' \
+                         f'Received for cookie "{cookie.key}" expiration of ' \
+                         f'"{response_cookie.expires}", expected "session"'
+            self.found_error = True
+            return False
+        elif response_cookie.expires is None:
+            self.error = f'Unexpected result for {self.name}!\n' \
+                         f'Received for cookie "{cookie.key}" expiration of ' \
+                         f'"session", expected "{cookie.max_age}"'
+            self.found_error = True
+            return False
+        elif abs(max_age.timestamp() - response_cookie.expires) >= 30:
+            self.error = 'Unexpected result for ' \
+                         f'{self.name}!\n{response_cookie.expires}!={max_age}\n{self.method}'
+            self.found_error = True
+            return False
+        return True
+
     def _run_positive_test(self, other_value: RequestsCookieJar) -> None:
         not_found = []
         for cookie in self.value:
@@ -170,38 +228,12 @@ class ContainsCookiesTest(ValueTest):
                 if response_cookie.name != cookie.key:
                     continue
                 found = True
-                if cookie.domain is not None and cookie.domain != response_cookie.domain:
-                    self.error = 'Unexpected result for ' \
-                                 f'{self.name}!\nDomain: {response_cookie.domain}!={cookie.domain}\n{self.method}'
-                    self.found_error = True
-                    return
-                if cookie.value is not None and response_cookie.value != cookie.value:
-                    self.error = 'Unexpected result for ' \
-                                 f'{self.name}!\n{response_cookie.value}!={cookie.value}\n{self.method}'
-                    self.found_error = True
-                    return
+                attrs = ['domain', 'value']
+                for attr in attrs:
+                    self._test_attr(attr, cookie, response_cookie)
                 if cookie.max_age is not None:
-                    max_age = self._get_max_age(cookie)
-                    if max_age == 'session':
-                        if response_cookie.expires is None:
-                            continue
-                        else:
-                            self.error = f'Unexpected result for {self.name}!\n' \
-                                         f'Received for cookie "{cookie.key}" expiration of ' \
-                                         f'"{response_cookie.expires}", expected "session"'
-                            self.found_error = True
-                            return
-                    elif response_cookie.expires is None:
-                        self.error = f'Unexpected result for {self.name}!\n' \
-                                     f'Received for cookie "{cookie.key}" expiration of ' \
-                                     f'"session", expected "{cookie.max_age}"'
-                        self.found_error = True
-                        return
-                    elif abs(max_age.timestamp() - response_cookie.expires) >= 30:
-                        self.error = 'Unexpected result for ' \
-                                     f'{self.name}!\n{response_cookie.expires}!={max_age}\n{self.method}'
-                        self.found_error = True
-                    return
+                    if self._test_cookie_age(cookie, response_cookie):
+                        continue
             if not found:
                 not_found.append(cookie.key)
 

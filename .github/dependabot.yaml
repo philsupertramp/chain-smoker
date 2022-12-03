@@ -8,10 +8,13 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      # Check for updates to GitHub Actions every weekday
       interval: "daily"
   - package-ecosystem: "pip"
     directory: "./requirements.txt"
     schedule:
-      # Check for updates to PyPi packages every weekday
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
       interval: "daily"

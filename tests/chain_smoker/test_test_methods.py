@@ -58,6 +58,9 @@ class ContainsTestTestCase(TestCase):
         (4, [1, 2, 3], False),
         ({'payload': 1}, {'payload': [1, 2, 3]}, True),
         ({'payload': 4}, {'payload': [1, 2, 3]}, False),
+        (['foo', 'bar'], {'foo': 1, 'bar': 2, 'baz': 3}, True),
+        (['foo'], {'foo': 1, 'bar': 2}, True),
+        (['baz'], {'foo': 1, 'bar': 2}, False),
     ])
     def test_run_test(self, input_value, other_value, expected_result):
         self.assertEqual(ContainsTest(input_value, '', '').test(other_value), expected_result)
@@ -78,6 +81,9 @@ class ContainsTestTestCase(TestCase):
         (4, [1, 2, 3], True),
         ({'payload': 1}, {'payload': [1, 2, 3]}, False),
         ({'payload': 4}, {'payload': [1, 2, 3]}, True),
+        (['foo', 'bar'], {'foo': 1, 'bar': 2, 'baz': 3}, False),
+        (['foo'], {'foo': 1, 'bar': 2}, False),
+        (['baz'], {'foo': 1, 'bar': 2}, True),
     ])
     def test_run_test_inverse(self, input_value, other_value, expected_result):
         self.assertEqual(ContainsTest(input_value, '', '', inverse=True).test(other_value), expected_result)

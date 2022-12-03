@@ -20,6 +20,16 @@ class APIClientTestCase(TestCase):
     def test_build_url(self, input_value, expected_url):
         self.assertEqual(self.client._build_url(input_value), expected_url)
 
+    @parameterized.expand([
+        ({'foo': 'bar'}, {'foo': 'bar'}),
+        (None, {})
+    ])
+    def test_set_header(self, input_value, expected_value):
+        client = APIClient(ClientConfig(base_url='https://example.com'))
+        old_val = client.session.headers.copy()
+        client.set_headers(input_value)
+        self.assertEqual(client.session.headers, expected_value or old_val)
+
     def test_auth_header_set_when_auth_header_passed(self):
         expected_value = 'bar'
         config = ClientConfig(

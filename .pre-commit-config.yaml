@@ -4,7 +4,6 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
-    -   id: detect-aws-credentials
     -   id: detect-private-key
     -   id: double-quote-string-fixer
     -   id: name-tests-test
@@ -22,3 +21,10 @@ repos:
     rev: 4.0.1
     hooks:
         - id: flake8
+exclude: |
+        (?x)^(
+            tests/parser/fixtures/unpacked-response.html|
+            tests/parser/fixtures/gzipped-response.html|
+            tests/parser/fixtures/sample.html|
+            tests/parser/fixtures/sample.json|
+        )$

@@ -15,12 +15,13 @@ class SmokeTestTestCase(TestCase):
     @staticmethod
     def create_test(name, method, endpoint, payload=None, uses=None,
                     requires_auth=True, expected_status_code=200, expected=None,
-                    contains=None, contains_not=None, response_cookies=None):
+                    contains=None, contains_not=None, response_cookies=None, response_headers=None):
         client_mock = mock.Mock()
         return SmokeTest(name=name, client=client_mock, method=method, endpoint=endpoint,
                          payload=payload, uses=uses, requires_auth=requires_auth,
                          expected_result=expected, contains_result=contains, expects_status_code=expected_status_code,
-                         contains_not_result=contains_not, response_cookies=response_cookies)
+                         contains_not_result=contains_not, response_cookies=response_cookies,
+                         response_headers=response_headers)
 
     def test_build(self):
         client = APIClient(ClientConfig(base_url='example.com'))
@@ -61,8 +62,8 @@ class SmokeTestTestCase(TestCase):
         test.client.post.assert_called_with('example.com/endpoint', {'foo': 'endpoint'}, requires_auth=True)
 
     @parameterized.expand([
-        (mock.Mock(text='Foo   .     bar', json=mock.Mock(side_effect=ValueError)), 'Foo .  bar'),
-        (mock.Mock(text='Foo  bar', json=mock.Mock(side_effect=ValueError)), 'Foo bar'),
+        (mock.Mock(content=b'Foo   .     bar', json=mock.Mock(side_effect=ValueError)), 'Foo   .     bar'),
+        (mock.Mock(content=b'Foo  bar', json=mock.Mock(side_effect=ValueError)), 'Foo  bar'),
         (mock.Mock(json=mock.Mock(return_value={'key': 'value'})), {'key': 'value'}),
     ])
     def test_get_response_content(self, res_mock, expected_output):
@@ -116,8 +117,21 @@ class SmokeTestTestCase(TestCase):
         res = test.run()
         self.assertIsNotNone(res)
 
+    def test_run_contains_headers(self):
+        test = self.create_test('test', 'get', 'example.com/', response_headers={'key': 'value'})
+        test.client.get.return_value = mock.Mock(status_code=200, headers={'key': 'value'})
+        res = test.run()
+        self.assertIsNotNone(res)
+
+        test = self.create_test('test', 'get', 'example.com/', response_headers={'foo': 'value'})
+        test.client.get.return_value = mock.Mock(status_code=200, headers={'key': 'value'})
+        res = test.run()
+        self.assertIsNone(res)
+
     def test_run_contains_cookies(self):
-        test = self.create_test('test', 'get', 'example.com/', response_cookies=[Cookie(key='bar', domain='example.com')])
+        test = self.create_test(
+            'test', 'get', 'example.com/', response_cookies=[Cookie(key='bar', domain='example.com')]
+        )
 
         jar = RequestsCookieJar()
         jar.set_cookie(
@@ -157,7 +171,7 @@ class ChainedSmokeTestTestCase(TestCase):
         test_2 = TestConfig(
             name='test_2', is_authentication=True, payload='{}',
             auth_header_template=AuthHeaderTemplate(
-                auth_header=AuthHeader(Authorization='Barer foo'),
+                auth_header=AuthHeader(Authorization='Bearer foo'),
                 token_position='res.json().get(\'token\')'
             )
         )
@@ -191,7 +205,7 @@ class ChainedSmokeTestTestCase(TestCase):
         test_2 = TestConfig(
             name='test_2', is_authentication=True, payload='{}',
             auth_header_template=AuthHeaderTemplate(
-                auth_header=AuthHeader(Authorization='Barer foo'),
+                auth_header=AuthHeader(Authorization='Bearer foo'),
                 token_position='res.json().get(\'token\')'
             )
         )

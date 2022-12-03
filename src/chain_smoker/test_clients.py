@@ -17,11 +17,10 @@ class SmokeTest(EvaluationMixin):
     """
     def __init__(self, name: str, client: APIClient, method: str, endpoint: str,
                  payload: TestValueType, uses: Optional[Dict], requires_auth: Optional[bool] = True,
-                 expects_status_code: Optional[int] = None, expected_result: Optional[TestValueType] = None,
-                 contains_result: Optional[TestValueType] = None,
-                 contains_not_result: Optional[TestValueType] = None,
-                 response_cookies: Optional[List[Cookie]] = None,
-                 request_cookies: Optional[List[Cookie]] = None) -> None:
+                 headers: Optional[Dict] = None, expects_status_code: Optional[int] = None,
+                 expected_result: Optional[TestValueType] = None, contains_result: Optional[TestValueType] = None,
+                 contains_not_result: Optional[TestValueType] = None, response_cookies: Optional[List[Cookie]] = None,
+                 response_headers: Optional[Dict] = None, request_cookies: Optional[List[Cookie]] = None) -> None:
         self.name: str = name
         self.client: APIClient = client
         self.method: str = method
@@ -30,22 +29,35 @@ class SmokeTest(EvaluationMixin):
         self.payload_cookies: Optional[List[Cookie]] = request_cookies
         self.uses: Optional[Dict] = uses
         self.requires_auth = requires_auth
-        self.expected_result: ExpectedTest = ExpectedTest(expected_result, name=name, method=method) if expected_result else None
-        self.contains_result: ContainsTest = ContainsTest(contains_result, name=name, method=method) if contains_result else None
-        self.response_cookies: ContainsCookiesTest = ContainsCookiesTest(response_cookies, name=name, method=method) if response_cookies else None
-        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(expects_status_code, name=name, method=method) \
-            if expects_status_code else None
-        self.contains_not_result: ContainsTest = ContainsTest(contains_not_result, inverse=True, name=name, method=method) \
-            if contains_not_result else None
+        self.expected_result: ExpectedTest = ExpectedTest(
+            expected_result, name=name, method=method
+        ) if expected_result else None
+        self.contains_result: ContainsTest = ContainsTest(
+            contains_result, name=name, method=method
+        ) if contains_result else None
+        self.response_cookies: ContainsCookiesTest = ContainsCookiesTest(
+            response_cookies, name=name, method=method
+        ) if response_cookies else None
+        self.expects_status_code: ExpectedStatusCodeTest = ExpectedStatusCodeTest(
+            expects_status_code, name=name, method=method
+        ) if expects_status_code else None
+        self.contains_not_result: ContainsTest = ContainsTest(
+            contains_not_result, inverse=True, name=name, method=method
+        ) if contains_not_result else None
+        self.headers = headers
+        self.response_headers: ContainsTest = ContainsTest(
+            response_headers, name=name, method=method
+        ) if response_headers else None
 
     def _get_response(self, *args, **kwargs) -> Response:
         endpoint = self.endpoint
         payload = self.payload
         request_kwargs = {}
 
+        env = kwargs.pop('env', {})
         if self.uses is not None:
             values = kwargs.pop('values', {})
-            format_values = {k: eval(v, {'values': values}) for k, v in self.uses.items()}
+            format_values = {k: eval(v, {'values': values, 'env': env}) for k, v in self.uses.items()}
             endpoint = self.endpoint.format(**format_values)
             if payload:
                 for key, value in format_values.items():
@@ -55,6 +67,9 @@ class SmokeTest(EvaluationMixin):
             request_kwargs.update({'cookies': {c.key: c.value for c in self.payload_cookies}})
 
         kwargs.pop('values', None)
+        # set temporary headers
+        self.client.set_headers(self.headers)
+
         if self.payload is not None:
             method = partial(
                 getattr(self.client, self.method),
@@ -72,14 +87,17 @@ class SmokeTest(EvaluationMixin):
         try:
             return res.json()
         except ValueError:
-            return res.text.replace('\n', '').replace('   ', ' ').replace('  ', ' ')
+            return res.content.decode('utf-8')
 
     def run(self, *args, **kwargs) -> Optional[TestValueType]:
+
         result = self._get_response(*args, **kwargs)
 
         if self.expects_status_code and not self.expects_status_code.test(result):
             return
         if self.response_cookies is not None and not self.response_cookies.test(result.cookies):
+            return
+        if self.response_headers is not None and not self.response_headers.test(result.headers):
             return
 
         result = self._get_response_content(result)
@@ -105,9 +123,11 @@ class SmokeTest(EvaluationMixin):
             contains_result=step.contains,
             contains_not_result=step.contains_not,
             payload=step.payload,
+            headers=step.headers,
             uses=step.uses,
             requires_auth=step.requires_auth,
             response_cookies=step.response_cookies,
+            response_headers=step.response_headers,
             request_cookies=step.payload_cookies
         )
 
@@ -135,7 +155,9 @@ class ChainedSmokeTest(EvaluationMixin):
                 res = getattr(self.client, step.method)(step.endpoint, data=self.evaluate_value(step.payload))
                 auth_key, auth_value = list(step.auth_header_template.auth_header.dict().items())[0]
                 auth_value = auth_value.format(token=eval(step.auth_header_template.token_position))
-                self.client.session.headers = {auth_key: auth_value}
+                auth_header = {auth_key: auth_value}
+                self.client.session.headers = auth_header
+                self.client.default_headers = auth_header.copy()
                 self.values[step.name] = SmokeTest._get_response_content(res)
             else:
                 tests.append(
@@ -144,12 +166,12 @@ class ChainedSmokeTest(EvaluationMixin):
 
         self.tests = OrderedDict(tests)
 
-    def run(self):
+    def run(self, env=None):
         logger.info(f'Running chained test case {self.name}:')
         self.values = dict()
         self._build_test()
         for test_name, test in self.tests.items():
-            self.values[test_name] = test.run(values=self.values)
+            self.values[test_name] = test.run(values=self.values, env=env)
 
     @classmethod
     def build(cls, step: TestConfig, client: APIClient) -> 'ChainedSmokeTest':

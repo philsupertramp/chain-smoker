@@ -2,6 +2,8 @@ type: 'api-test'
 config:
   client:
     base_url: 'https://example.com'
+  env:
+    foo: bar
 tests:
   test_something:
     method: 'get'
@@ -18,3 +20,7 @@ tests:
       - name: 'second_request'
         method: 'get'
         status_code: 200
+  test_using_env:
+    method: 'get'
+    status_code: 200
+    endpoint: '{env.get("foo")}'

@@ -1,10 +1,11 @@
+import os
 from enum import Enum
 from typing import List, Union, Dict, Optional
 
 from pydantic import BaseModel, Field, validator
 
 
-PayloadType = Union[str, Dict, int]
+PayloadType = Union[str, Dict, int, List, bytes]
 
 
 class ConfigType(str, Enum):
@@ -46,6 +47,7 @@ class TestConfig(BaseModel):
     # input
     payload: Optional[PayloadType] = Field(None, description='Payload used, can be Dict or Dict/JSON-string')
     payload_cookies: Optional[List[Cookie]] = Field([], description='Cookies send with the request')
+    headers: Optional[Dict] = Field(None, description='Request headers to send.')
 
     # output tests
     expects_status_code: Optional[int] = Field(None, description='The expected response status code')
@@ -57,6 +59,7 @@ class TestConfig(BaseModel):
         None, description='NOT IN comparison values, can be Dict or Dict/JSON-string'
     )
     response_cookies: Optional[List[Cookie]] = Field([], description='Cookies expected with the response')
+    response_headers: Optional[Dict] = Field(None, description='Expected response headers to receive.')
 
     auth_header_template: Optional[AuthHeaderTemplate] = Field(
         None, description='Template configuration for header used to perform authenticated requests'
@@ -71,16 +74,10 @@ class TestConfig(BaseModel):
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestConfig':
         auth_header_template = cfg.pop('auth_header_template', None)
-        payload = cfg.pop('payload', None)
-        contains = cfg.pop('contains', None)
-        expected = cfg.pop('expected', None)
         steps = cfg.pop('steps', [])
         return cls(
             **cfg,
             auth_header_template=AuthHeaderTemplate(**auth_header_template) if auth_header_template else None,
-            payload=payload,
-            expected=expected,
-            contains=contains,
             steps=[TestConfig.from_dict(step) for step in steps]
         )
 
@@ -118,13 +115,32 @@ class ClientConfig(BaseModel):
         )
 
 
+class EnvVar(BaseModel):
+    internal_key: str = Field(..., description='internal key')
+    external_key: str = Field(..., description='external key')
+
+    @validator('external_key')
+    @classmethod
+    def root_validate(cls, field_value, values, field, config):
+        if field_value is None or field_value not in os.environ:
+            raise ValueError(f'Env var "{field_value}" undefined.')
+        return field_value
+
+
 class TestFileConfig(BaseModel):
     client: ClientConfig = Field(..., description='Configuration of the client used in each test.')
+    env: Optional[List[EnvVar]] = Field(None, description='List of environment variables to use.')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'TestFileConfig':
+        if cfg is None:
+            return cls()
+
         return cls(
-            client=ClientConfig.from_dict(cfg.get('client', {})) if cfg else None
+            client=ClientConfig.from_dict(cfg.get('client', {})) if cfg else None,
+            env=[EnvVar(internal_key=key, external_key=value) for key, value in cfg.get('env', {}).items()]
+            if isinstance(cfg.get('env'), dict) else cfg.get('env')
+            if 'env' in cfg else []
         )
 
     @validator('client', pre=True)
@@ -147,11 +163,26 @@ class TestCaseConfig(BaseModel):
             type=cfg.get('type'),
             config=TestFileConfig.from_dict(cfg.get('config')),
             tests=[TestConfig.from_dict({'name': name, **elem}) for name, elem in cfg.get('tests', {}).items()]
+            if isinstance(cfg.get('tests'), dict) else cfg.get('tests')
         )
 
     @validator('type')
     def type_must_be_valid(cls, v):
         return ConfigType(v)
+
+
+class Request(BaseModel):
+    Payload: PayloadType = Field(...)
+    Protocol: str = Field(...)
+    Path: str = Field(...)
+    Method: str = Field(...)
+    Headers: Dict = Field(...)
+
+
+class Response(BaseModel):
+    Status_code: int = Field(200)
+    Body: PayloadType = Field(...)
+    Headers: Dict = Field(...)
 
 
 if __name__ == '__main__':
