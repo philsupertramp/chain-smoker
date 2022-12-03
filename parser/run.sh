@@ -20,10 +20,11 @@ function ctrl_c() {
 
 function ensure_pipe() {
   pipe=$1
-  if [ ! -p "${pipe}" ]
+  if [ -p "${pipe}" ]
   then
-    mkfifo "${pipe}"
+    rm "${pipe}"
   fi
+  mkfifo "${pipe}"
 }
 
 ensure_pipe parser_buffer

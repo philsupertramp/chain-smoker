@@ -42,6 +42,9 @@ class RewriteConfig(BaseModel):
         return cls(**content)
 
     def apply(self, request, obj, conf_key, replace=False, regex_replace=False):
+        if not obj:
+            return obj
+
         url = urllib.parse.urlparse(request.Path)
         if url.path in self.requests:
             conf = self.requests[url.path]

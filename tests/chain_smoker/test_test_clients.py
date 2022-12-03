@@ -62,8 +62,8 @@ class SmokeTestTestCase(TestCase):
         test.client.post.assert_called_with('example.com/endpoint', {'foo': 'endpoint'}, requires_auth=True)
 
     @parameterized.expand([
-        (mock.Mock(text='Foo   .     bar', json=mock.Mock(side_effect=ValueError)), 'Foo .  bar'),
-        (mock.Mock(text='Foo  bar', json=mock.Mock(side_effect=ValueError)), 'Foo bar'),
+        (mock.Mock(content=b'Foo   .     bar', json=mock.Mock(side_effect=ValueError)), 'Foo   .     bar'),
+        (mock.Mock(content=b'Foo  bar', json=mock.Mock(side_effect=ValueError)), 'Foo  bar'),
         (mock.Mock(json=mock.Mock(return_value={'key': 'value'})), {'key': 'value'}),
     ])
     def test_get_response_content(self, res_mock, expected_output):

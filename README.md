@@ -45,6 +45,8 @@ to create test cases which can be used by `chain-smoker`.
 But how to use it and how to automate the tests?
 
 ## Using `chain-smoker`
+**Note:** Remember to disable your cache in case you decide to use a browser to perform requests.
+
 
 First, clone the repository
 ```shell
@@ -89,7 +91,7 @@ To verify your set-up is working correctly, run
 #### Online Repositories
 To get the most recent stable version (`latest`) of the tools, consult the [docker-hub](https://hub.docker.com/search?q=philsupertramp%2Fchain-smoker).
 #### Build
-To use the docker build, first build the container(s)
+To use the docker build, first build the image(s)
 
 ##### chain-smoker only
 ```shell
@@ -545,7 +547,7 @@ requests:
       payload: # rewrite request payload
         key: value
       keep: # regex search to keep page content
-        - some_regex # e.g. get content from all h1 tags <h1[^>]?>(\w+)?<\/h1[^>]?>
+        - some_regex # e.g. get content from all h1 tags <h1[^>]*>([^<]+)?<\/h1[^>]?>
 ```
 
 ### Some use case examples:
@@ -577,7 +579,7 @@ requests:
   /get/:
     get:
       keep:
-        - <h1[^>]?>(\w+)?<\/h1[^>]?>
+        - <h1[^>]*>([^<]+)?<\/h1[^>]?>
 ```
 
 **Rewrite payloads**

@@ -198,11 +198,10 @@ class FileWriterTestCase(TestCase):
         with open(os.path.join(os.path.dirname(__file__), './fixtures/sample.html'), 'r') as f:
             sample_body = f.read()
 
-        writer = TestFileWriter(sample_request, 'someFile.yaml')
+        writer = TestFileWriter(sample_request, 'someFile.yaml', 'bar.yaml')
 
         config = writer._build_config()
         test_method = config['tests'][0]
-
         self.assertEqual(test_method.get('contains'), sample_body)
 
     @parameterized.expand([
@@ -283,13 +282,20 @@ class RewriteConfigTestCase(TestCase):
         ({}, 'payload', True, False, {}),
         ({'foo': 1, 'bar': 'baz'}, 'payload', True, False, {'foo': 'bar', 'bar': 'baz'}),
         ('<html><h2>Sub-Title</h2></html>', 'keep', False, True, []),
-        ('<html><h1>Title</h1></br><h2>Sub-Title</h2></html>', 'keep', False, True, ['Title']),
+        ('<html><h1>Title Words</h1></br><h2>Sub-Title</h2></html>', 'keep', False, True, ['Title Words']),
         (
-            '<html><h1>Title</h1></br><h2>Sub-Title</h2><h1>Heading</h1></html>',
+            '<html><h1 class="title">Title Words</h1></br><h2>Sub-Title</h2></html>',
             'keep',
             False,
             True,
-            ['Title', 'Heading']
+            ['Title Words']
+        ),
+        (
+            '<html><h1>Title Words</h1></br><h2>Sub-Title</h2><h1>Heading</h1></html>',
+            'keep',
+            False,
+            True,
+            ['Title Words', 'Heading']
         ),
     ])
     def test_apply(self, dict_value, conf_key, replace, regex_replace, expected_value):
@@ -303,7 +309,7 @@ class RewriteConfigTestCase(TestCase):
                         'payload': {
                             'foo': 'bar'
                         },
-                        'keep': [r'<h1[^>]?>(\w+)?<\/h1[^>]?>'],
+                        'keep': [r'<h1[^>]*>([^<]+)?<\/h1[^>]?>'],
                     }
                 }
             },

@@ -1,4 +1,6 @@
 import datetime
+from functools import partial
+from operator import ne, eq
 from typing import Union, Dict, List
 
 from requests import Response
@@ -18,6 +20,8 @@ class ValueTest:
     def __init__(self, value: TestValueType, name: str, method: str, inverse=False):
         self.value = value
         self.inverse = inverse
+        op = eq if self.inverse else ne
+        self.value_test = partial(op, value)
         self.name = name
         self.method = method
 
@@ -70,8 +74,7 @@ class ExpectedTest(ValueTest):
     Equal comparison of objects
     """
     def _run_test(self, other_value: TestValueType) -> None:
-        op = '__eq__' if self.inverse else '__ne__'
-        if getattr(other_value, op)(self.value):
+        if self.value_test(other_value):
             self.error = f'Unexpected result for {self.name}!\n{other_value}\n'
             self.error += '==' if self.inverse else '!='
             self.error += f'\n{self.value}\n{self.method}'
@@ -83,8 +86,7 @@ class ExpectedStatusCodeTest(ValueTest):
     Equal comparison of objects
     """
     def _run_test(self, other_value: Response) -> None:
-        op = '__eq__' if self.inverse else '__ne__'
-        if getattr(other_value.status_code, op)(self.value):
+        if self.value_test(other_value.status_code):
             self.error = f'Unexpected status_code for {self.name}!\n{other_value.status_code}\n'
             self.error += '==' if self.inverse else '!='
             self.error += f'\n{self.value}\n{self.method}'
