@@ -18,12 +18,10 @@ jobs:
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Go Release Binaries
       uses: wangyoucao577/go-release-action@v1.33
-      env:
-        TAG_NAME: proxy-${{ steps.date.outputs.date }}
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: linux
         goarch: amd64
         project_path: parser/proxy
         binary_name: proxy
-        release_tag: proxy-$TAG_NAME
+        release_tag: proxy-${{ steps.date.outputs.date }}
