@@ -16,7 +16,7 @@ RUN mkdir -p "/usr/app/parser/proxy/build" && \
   wget "https://github.com/philsupertramp/chain-smoker/releases/download/proxy/proxy-2023-01-25-proxy-linux-amd64.tar.gz" -q -P "/usr/app/parser/proxy/build" && \
   tar -xzf "/usr/app/parser/proxy/build/proxy-2023-01-25-proxy-linux-amd64.tar.gz" -C "/usr/app/parser/proxy/build/" && \
   rm -rf "/usr/app/parser/proxy/build/proxy-2023-01-25-proxy-linux-amd64.tar.gz" && \
-  mv "/usr/app/parser/proxy/build/proxy-2023-01-25" "/usr/app/parser/proxy/build/proxy"
+  mv "/usr/app/parser/proxy/build/proxy-2023-01-25" "/usr/app/parser/proxy/build/proxy" && \
   chmod +x "/usr/app/parser/proxy/build/proxy"
 
 
