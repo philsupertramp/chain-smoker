@@ -48,4 +48,4 @@ jobs:
           file: parser/Dockerfile
           context: .
           push: true
-          tags: ${{ github.repository }}-proxy:latest , ${{ github.repository }}-proxy:${{ github.sha }}
+          tags: ${{ github.repository }}-parser:latest , ${{ github.repository }}-parser:${{ github.sha }}
