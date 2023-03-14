@@ -1,3 +1,5 @@
 #!/bin/sh -l
 
-python /usr/app/chain-smoker/chain-smoker.py -d /github/workspace/$1
+cd /usr/app
+
+python -m chain-smoker.chain-smoker -d /github/workspace/$1
