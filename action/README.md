@@ -19,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Action step
-        uses: philsupertramp/chain-smoker/action@v1.0.7
+        uses: philsupertramp/chain-smoker/action@v1.0.8
         with:
           directory: 'examples'
 ```
