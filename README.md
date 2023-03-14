@@ -47,6 +47,10 @@ But how to use it and how to automate the tests?
 ## Using `chain-smoker`
 **Note:** Remember to disable your cache in case you decide to use a browser to perform requests.
 
+### Github-Action-Runner
+There's an implementation of a test case runner via github-action available, see [`./action`](./action/README.md) for more insights.
+
+### On your machine
 
 First, clone the repository
 ```shell
