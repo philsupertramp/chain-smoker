@@ -14,7 +14,7 @@ jobs:
 
     - name: Action step
       env:
-        bar: foo
+        bar: baz
       uses: philsupertramp/chain-smoker/action@v1
       with:
         directory: 'examples'
