@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 import yaml
 
@@ -22,7 +22,7 @@ class TestFileLoader(EvaluationMixin):
         self.config: TestCaseConfig = TestCaseConfig.from_dict(content)
         self.client: Optional[APIClient] = self._get_client(self.config)
         self.env_vars: Dict[str, Any] = self._get_env_vars(self.config)
-        self.test_methods: List[SmokeTest] = list()
+        self.test_methods: List[Union[SmokeTest, ChainedSmokeTest]] = list()
         self._build_tests()
 
     @staticmethod
@@ -55,4 +55,9 @@ class TestFileLoader(EvaluationMixin):
     def run(self) -> None:
         logger.info(f'Running for {self.filename}:')
         for test in self.test_methods:
-            test.run(env=self.env_vars)
+            res = test.run(env=self.env_vars)
+            if res is None:
+                raise AssertionError(f'Failure for test "{test.name}".')
+            elif isinstance(test, ChainedSmokeTest) and None in res.values():
+                failed_tests = [k for k, v in res.items() if v is None]
+                raise AssertionError('Failure for tests:\n' + '\n\t'.join(failed_tests))

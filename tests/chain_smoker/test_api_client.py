@@ -97,3 +97,16 @@ class APIClientTestCase(TestCase):
         self.client.patch('foo', {'foo': 'bar'})
 
         self.client.session.patch.assert_called_once()
+
+    def test_enhance_kwargs(self):
+        config = ClientConfig(
+            base_url='https://example.com',
+            kwargs={'timeout': 10, 'stream': True}
+        )
+        client = APIClient(config)
+
+        new_kwargs = client._enhance_kwargs({})
+        self.assertDictEqual(new_kwargs, config.kwargs)
+
+        new_kwargs = client._enhance_kwargs({'timeout': 20})
+        self.assertEqual(new_kwargs['timeout'], 20)

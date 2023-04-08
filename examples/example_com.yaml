@@ -1,0 +1,9 @@
+type: 'api-test'
+config:
+  client:
+    base_url: 'https://example.com'
+tests:
+  test_something:
+    status_code: 200
+    contains:
+      Example Domain
