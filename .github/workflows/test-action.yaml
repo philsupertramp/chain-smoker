@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Action step
-      uses: philsupertramp/chain-smoker/action@v1.0.11
+      uses: philsupertramp/chain-smoker/action@v1
       with:
         directory: 'examples'
