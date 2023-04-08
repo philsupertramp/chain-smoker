@@ -16,6 +16,7 @@ class APIClient:
     def __init__(self, config: ClientConfig) -> None:
         self.base_url = config.base_url
         self.session = Session()
+        self.default_kwargs = config.kwargs
         if config.auth_header is not None:
             self.session.headers.update(config.auth_header.auth_header.dict())
         self.default_headers = self.session.headers.copy()
@@ -23,11 +24,16 @@ class APIClient:
     def _build_url(self, path: str) -> str:
         return urljoin(self.base_url, path)
 
+    def _enhance_kwargs(self, kwargs: Dict) -> Dict:
+        out_kwargs = self.default_kwargs.copy()
+        out_kwargs.update(kwargs)
+        return out_kwargs
+
     def _request(self, method: str, path: str, requires_auth: bool = True, **kwargs) -> Response:
         session = self.session
         if not requires_auth:
             session = Session()
-        rsp = getattr(session, method)(self._build_url(path), **kwargs)
+        rsp = getattr(session, method)(self._build_url(path), **self._enhance_kwargs(kwargs))
         self.set_headers(self.default_headers)
         return rsp
 

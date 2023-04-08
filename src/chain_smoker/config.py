@@ -103,6 +103,7 @@ class ClientConfig(BaseModel):
     auth_header: Optional[AuthHeaderTemplate] = Field(
         None, description='Header configuration for authentication when performing requests.'
     )
+    kwargs: Optional[Dict] = Field({}, description='Default request kwargs for all tests.')
 
     @classmethod
     def from_dict(cls, cfg: Dict) -> 'ClientConfig':
