@@ -172,6 +172,7 @@ class ChainedSmokeTest(EvaluationMixin):
         self._build_test()
         for test_name, test in self.tests.items():
             self.values[test_name] = test.run(values=self.values, env=env)
+        return self.values
 
     @classmethod
     def build(cls, step: TestConfig, client: APIClient) -> 'ChainedSmokeTest':
