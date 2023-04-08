@@ -5,6 +5,8 @@ WORKDIR /usr/app
 RUN useradd -m app-user -s /bin/sh
 ENV PATH=$PATH:/home/app-user
 
+RUN pip install -U pip
+
 COPY requirements.txt .
 
 RUN pip install -r requirements.txt
