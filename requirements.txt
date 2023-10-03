@@ -63,7 +63,7 @@ tomli==2.0.1
 tqdm==4.64.0
 traitlets==5.3.0
 typing_extensions==4.3.0
-urllib3==1.26.11
+urllib3==1.26.17
 virtualenv==20.16.7
 wcwidth==0.2.5
 websockets==10.3
