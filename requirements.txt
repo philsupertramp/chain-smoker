@@ -38,7 +38,7 @@ pre-commit==2.20.0
 prompt-toolkit==3.0.30
 ptyprocess==0.7.0
 pure-eval==0.2.2
-pydantic==1.9.2
+pydantic==1.10.13
 pyee==8.2.2
 Pygments==2.15.0
 pyparsing==3.0.9
