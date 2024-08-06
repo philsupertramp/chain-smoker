@@ -67,4 +67,4 @@ urllib3==1.26.18
 virtualenv==20.16.7
 wcwidth==0.2.5
 websockets==10.3
-zipp==3.8.1
+zipp==3.19.1
