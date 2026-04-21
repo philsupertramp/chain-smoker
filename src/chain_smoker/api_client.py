@@ -18,7 +18,7 @@ class APIClient:
         self.session = Session()
         self.default_kwargs = config.kwargs
         if config.auth_header is not None:
-            self.session.headers.update(config.auth_header.auth_header.dict())
+            self.session.headers.update(config.auth_header.auth_header.model_dump())
         self.default_headers = self.session.headers.copy()
 
     def _build_url(self, path: str) -> str:
