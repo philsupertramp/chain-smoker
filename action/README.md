@@ -17,7 +17,7 @@ jobs:
       # To use this repository's private action,
       # you must check out the repository
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Action step
         uses: philsupertramp/chain-smoker/action@v1
         with:
