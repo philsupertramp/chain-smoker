@@ -153,7 +153,7 @@ class ChainedSmokeTest(EvaluationMixin):
                 # TODO: include "uses" here
                 # NOTE: do NOT remove this assignment, `res` is a magic value for users
                 res = getattr(self.client, step.method)(step.endpoint, data=self.evaluate_value(step.payload))
-                auth_key, auth_value = list(step.auth_header_template.auth_header.dict().items())[0]
+                auth_key, auth_value = list(step.auth_header_template.auth_header.model_dump().items())[0]
                 auth_value = auth_value.format(token=eval(step.auth_header_template.token_position))
                 auth_header = {auth_key: auth_value}
                 self.client.session.headers = auth_header

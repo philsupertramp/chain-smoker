@@ -2,7 +2,7 @@ import os
 from enum import Enum
 from typing import List, Union, Dict, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 
 PayloadType = Union[str, Dict, int, List, bytes]
@@ -81,19 +81,21 @@ class TestConfig(BaseModel):
             steps=[TestConfig.from_dict(step) for step in steps]
         )
 
-    @validator('is_authentication', 'multi_step')
-    @classmethod
-    def root_validate(cls, field_value, values, field, config):
+    @field_validator('is_authentication', 'multi_step')
+    def root_validate(cls, field_value, info: ValidationInfo):
+        config = info.config
+        field_name = info.field_name
+
         if field_value:
-            if field.name == 'is_authentication':
-                if 'payload' not in values or values['payload'] is None:
+            if field_name == 'is_authentication':
+                if 'payload' not in info.data or info.data.get('payload') is None:
                     raise ValueError('Requires payload.')
-                if 'auth_header_template' in values and (val := values['auth_header_template']) is not None:
+                if 'auth_header_template' in info.data and (val := info.data.get('auth_header_template')) is not None:
                     if val.token_position is None or val.auth_header is None:
                         raise ValueError('Requires auth_header_template\'s auth_header and token_position set.')
                 else:
                     raise ValueError('Requires auth_header_template.')
-            elif field.name == 'multi_step' and 'steps' not in values or len(values['steps']) == 0:
+            elif field_name == 'multi_step' and ('steps' not in info.data or len(info.data.get('steps')) == 0):
                 raise ValueError('Requires steps.')
         return field_value
 
@@ -120,9 +122,8 @@ class EnvVar(BaseModel):
     internal_key: str = Field(..., description='internal key')
     external_key: str = Field(..., description='external key')
 
-    @validator('external_key')
-    @classmethod
-    def root_validate(cls, field_value, values, field, config):
+    @field_validator('external_key')
+    def root_validate(cls, field_value):
         if field_value is None or field_value not in os.environ:
             raise ValueError(f'Env var "{field_value}" undefined.')
         return field_value
@@ -144,7 +145,7 @@ class TestFileConfig(BaseModel):
             if 'env' in cfg else []
         )
 
-    @validator('client', pre=True)
+    @field_validator('client', mode='before')
     def root_validate(cls, values):
         if values is None:
             raise ValueError('Client undefined.')
@@ -167,7 +168,7 @@ class TestCaseConfig(BaseModel):
             if isinstance(cfg.get('tests'), dict) else cfg.get('tests')
         )
 
-    @validator('type')
+    @field_validator('type')
     def type_must_be_valid(cls, v):
         return ConfigType(v)
 

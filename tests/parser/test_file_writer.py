@@ -263,7 +263,7 @@ class RewriteConfigTestCase(TestCase):
 
     def test_from_file_unknown_file(self):
         config = RewriteConfig.from_file('foo')
-        self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
+        self.assertDictEqual(config.model_dump(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
 
     def test_from_file_known_invalid_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -273,7 +273,7 @@ class RewriteConfigTestCase(TestCase):
                 yaml.dump(self.sample_config, file)
 
             config = RewriteConfig.from_file(temp_file_path)
-            self.assertDictEqual(config.dict(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
+            self.assertDictEqual(config.model_dump(), {'skip': {}, 'requests': {}, 'headers': {}, 'skip_files': []})
 
     @parameterized.expand([
         ({}, 'ignore_response', False, False, {}),

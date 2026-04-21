@@ -140,7 +140,7 @@ class TestFileWriter(BaseModel, EvaluationMixin):
                 )
             }
         ))
-        obj_dict = config.dict()
+        obj_dict = config.model_dump()
         obj_dict['type'] = obj_dict['type'].value
         return obj_dict
 
