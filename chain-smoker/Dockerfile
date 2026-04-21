@@ -5,11 +5,19 @@ WORKDIR /usr/app
 RUN useradd -m app-user -s /bin/sh
 ENV PATH=$PATH:/home/app-user
 
-RUN pip install -U pip
+# Download the latest installer
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
 
-COPY requirements.txt .
+# Run the installer then remove it
+RUN sh /uv-installer.sh && rm /uv-installer.sh
 
-RUN pip install -r requirements.txt
+# Ensure the installed binary is on the `PATH`
+ENV PATH="/root/.local/bin/:$PATH"
+
+COPY uv.lock uv.lock
+COPY pyproject.toml pyproject.toml
+
+RUN uv sync --locked
 
 COPY src /usr/app/src
 COPY chain-smoker /usr/app/chain-smoker
