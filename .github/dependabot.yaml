@@ -9,8 +9,8 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-  - package-ecosystem: "pip"
-    directory: "./requirements.txt"
+  - package-ecosystem: "uv"
+    directory: "./pyproject.toml"
     schedule:
       interval: "daily"
 
